@@ -1,0 +1,32 @@
+<root>
+<err>0</err>
+<devname>Web Sensor</devname>
+<devsn>20961007</devsn>
+<time/>
+<timeunix/>
+<synch>0</synch>
+<ch1>
+<name>Temperature</name>
+<unit>°C</unit>
+<aval>20.9</aval>
+<alarm>0</alarm>
+</ch1>
+<ch2>
+<name>Relative humidity</name>
+<unit>%RH</unit>
+<aval>59.2</aval>
+<alarm>0</alarm>
+</ch2>
+<ch3>
+<name>Dew point</name>
+<unit>°C</unit>
+<aval>12.6</aval>
+<alarm>0</alarm>
+</ch3>
+<ch4>
+<name>CO2 level</name>
+<unit>ppm</unit>
+<aval>456</aval>
+<alarm>2</alarm>
+</ch4>
+</root>
