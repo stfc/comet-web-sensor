@@ -22,7 +22,7 @@ def make_csv_file_if_necessary(sensor):
     if not Path(filename).is_file(): 
         make_dir_if_needed(filename)
         with open(filename, 'w') as f:
-            f.write(sensor.requested_data)
+            f.write(sensor.data_fields)
     return filename
 
 
@@ -42,7 +42,7 @@ if __name__ == "__main__":
     sensors = [Sensor(parms) for parms in sensor_parms]
 
     for sensor in sensors:
-        sensor.requested_data = ['Temperature', 'Relative humidity', 'Dew point', 'CO2 level']
+        sensor.data_fields = ['Time', 'Temperature', 'Relative humidity', 'Dew point', 'CO2 level']
 
     interval = 60   
     
@@ -50,5 +50,5 @@ if __name__ == "__main__":
         for sensor in sensors:
             csv_file = make_csv_file_if_necessary(sensor)
             with open(csv_file, 'a') as f:
-                f.write(sensor.latest_data)
+                f.write(sensor.latest_csv_data)
         time.sleep(interval)
