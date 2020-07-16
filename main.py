@@ -1,4 +1,4 @@
-import os, datetime, time
+import os, datetime, time, atexit
 from pathlib import Path
 from sensor import Sensor
 from twisted.internet import task, reactor
@@ -7,6 +7,10 @@ from twisted.internet import task, reactor
 def get_today():
     return datetime.date.today().strftime("%Y%m%d")
     
+
+@atexit.register
+def on_exit():
+    reactor.stop()
 
 def make_dir_if_needed(filename):
     directory, _ = os.path.split(filename)
