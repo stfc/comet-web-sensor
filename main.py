@@ -63,12 +63,25 @@ if __name__ == "__main__":
     for sensor in sensors:
         sensor.data_fields = fields
     
-    
+          
+    def generate_timestamp(format = "%m/%d/%Y %H:%M:%S"):
+        return datetime.datetime.now().strftime(format)
+
+
     def get_data():
+        print(generate_timestamp())
+        # Stuff for Steve Blake - one file per sensor per day
         for sensor in sensors:
-            csv_file = make_todays_csv_file_if_necessary('ip,name,' + ','.join(fields)+'\n')
+            csv_file = make_sensor_csv_file_if_necessary(sensor, root='/home/jqg93617/sensor_data')
             with open(csv_file, 'a') as f:
+                f.write(sensor.latest_csv_data)
+            
+            # Stuff for Ahmad
+            csv_file_dash = make_todays_csv_file_if_necessary('ip,name,' + ','.join(fields)+'\n', root='dash')
+            with open(csv_file_dash, 'a') as f:
                 f.write(sensor.ip+','+sensor.name+','+sensor.latest_csv_data)
+            
+
 
 
     interval = 60.0 
