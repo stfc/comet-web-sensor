@@ -19,13 +19,16 @@ df = pd.read_csv('./20200716/20200716_sensors.csv')
 df = df.replace('connection','0')
 df = df.astype({'Temperature':'float', 'Relative humidity':'float', 'Dew point':'float', 'CO2 level': 'float', 'Time':'datetime64[ns]'})
 
+parameter = 'CO2 level'
 
 fig = go.Figure()
 for key, grp in df.groupby(['ip']):
-    fig.add_scatter(x=grp['Time'], y=grp['Temperature'], name=key, mode='lines + markers')
+    fig.add_scatter(x=grp['Time'], y=grp[parameter], name=key, mode='lines + markers')
 
+fig.layout
 
 app.layout = html.Div(children=[
+
 
     dcc.Graph(
         id='scatter',
