@@ -1,5 +1,5 @@
 
-import dash
+import dash, threading
 import dash_core_components as dcc
 import dash_html_components as html
 import pandas as pd
@@ -12,12 +12,16 @@ from dash.dependencies import Input, Output
 server = Flask(__name__)
 app = dash.Dash(__name__, server = server)
 
-def get_and_condition_data(source = './20200716/20200716_sensors.csv'):
+plot_refresh_time = 20 #seconds
+data_source = './dash/20200720_sensors.csv'
+
+def get_and_condition_data(source = data_source):
     df = pd.read_csv(source)
     df = df.replace('connection','0')
     df = df.replace('-','0')
     df = df.astype({'Temperature':'float', 'Relative humidity':'float', 'Dew point':'float', 'CO2 level': 'float', 'Time':'datetime64[ns]'})
     return df
+
 
 df = get_and_condition_data()
 
@@ -49,6 +53,12 @@ app.layout = html.Div(children=[
         value='name'
     ),
 
+    dcc.Interval(
+        id='interval-component',
+        interval=plot_refresh_time*1000, # in milliseconds
+        n_intervals=0
+        )
+
 
 ])
 
@@ -56,10 +66,11 @@ app.layout = html.Div(children=[
     [Output('data-plot', 'figure'),
     Output('plot-title', 'children')],
     [Input('parameter-picker', 'value'), 
-    Input('legend-display-picker', 'value')]
+    Input('legend-display-picker', 'value'),
+    Input('interval-component', 'n_intervals')]
     )
-def update_output(parameter, sensor_tag):
-
+def update_output(parameter, sensor_tag, n_intervals):
+    df = get_and_condition_data()
     fig = go.Figure()
     for key, grp in df.groupby([sensor_tag]):
         fig.add_scatter(x=grp['Time'], y=grp[parameter], name=key, mode='lines + markers')
@@ -71,6 +82,7 @@ def update_output(parameter, sensor_tag):
             }
         }
     return fig, parameter
+
 
 if __name__ == '__main__':
     app.run_server(debug=True)
