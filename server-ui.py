@@ -15,6 +15,7 @@ app = dash.Dash(__name__, server = server)
 def get_and_condition_data(source = './20200716/20200716_sensors.csv'):
     df = pd.read_csv(source)
     df = df.replace('connection','0')
+    df = df.replace('-','0')
     df = df.astype({'Temperature':'float', 'Relative humidity':'float', 'Dew point':'float', 'CO2 level': 'float', 'Time':'datetime64[ns]'})
     return df
 
@@ -55,7 +56,7 @@ app.layout = html.Div(children=[
     [Output('data-plot', 'figure'),
     Output('plot-title', 'children')],
     [Input('parameter-picker', 'value'), 
-    Input('legend-display-picker', 'value'),]
+    Input('legend-display-picker', 'value')]
     )
 def update_output(parameter, sensor_tag):
 
