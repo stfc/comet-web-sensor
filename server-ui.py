@@ -12,20 +12,13 @@ from dash.dependencies import Input, Output
 server = Flask(__name__)
 app = dash.Dash(__name__, server = server)
 
-## load sensors data
-df = pd.read_csv('./20200716/20200716_sensors.csv')
+def get_and_condition_data(source = './20200716/20200716_sensors.csv'):
+    df = pd.read_csv(source)
+    df = df.replace('connection','0')
+    df = df.astype({'Temperature':'float', 'Relative humidity':'float', 'Dew point':'float', 'CO2 level': 'float', 'Time':'datetime64[ns]'})
+    return df
 
-## replace not valid values with Zero
-df = df.replace('connection','0')
-df = df.astype({'Temperature':'float', 'Relative humidity':'float', 'Dew point':'float', 'CO2 level': 'float', 'Time':'datetime64[ns]'})
-
-#parameter = 'CO2 level'
-
-# fig = go.Figure()
-# for key, grp in df.groupby(['ip']):
-#     fig.add_scatter(x=grp['Time'], y=grp[parameter], name=key, mode='lines + markers')
-
-
+df = get_and_condition_data()
 
 app.layout = html.Div(children=[
 
