@@ -12,7 +12,7 @@ from dash.dependencies import Input, Output
 server = Flask(__name__)
 app = dash.Dash(__name__, server = server)
 
-plot_refresh_time = 20 #seconds
+plot_refresh_time = 60 #seconds
 data_source = './dash/20200720_sensors.csv'
 
 def get_and_condition_data(source = data_source):
