@@ -2,6 +2,7 @@ import urllib.request
 import urllib.error
 import xml.etree.ElementTree as ET
 import datetime
+import socket
 
 
 class Sensor():
@@ -19,10 +20,11 @@ class Sensor():
 
     def _read_xml_from_web(self):
         try:
-            r = urllib.request.urlopen("http://" + self._ip + "/values.xml", timeout=2)
+            r = urllib.request.urlopen("http://" + self._ip + "/values.xml", timeout=5)
+            xml = ET.fromstring(r.read(2048))
             self._data_received = True
-            return ET.fromstring(r.read(2048))
-        except (TimeoutError, urllib.error.URLError):
+            return xml
+        except (TimeoutError, urllib.error.URLError, socket.timeout):
             self._data_received = False
             return None
 
