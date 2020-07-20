@@ -41,14 +41,20 @@ app.layout = html.Div(children=[
 ])
 
 @app.callback(
-    [Output('data-plot', 'figure'),
-    Output('plot-title', 'children')],
+    [Output('data-plot', 'figure'), Output('plot-title', 'children')],
     [Input('parameter-picker', 'value')])
 def update_output(value):
 
     fig = go.Figure()
     for key, grp in df.groupby(['ip']):
         fig.add_scatter(x=grp['Time'], y=grp[value], name=key, mode='lines + markers')
+
+    units = {'Temperature':'C', 'Relative humidity':'%', 'Dew point':'C', 'CO2 level': 'ppm'}
+    fig.layout = {
+        "yaxis": {
+            "title": {"text":units[value]}
+            }
+        }
     return fig, value
 
 if __name__ == '__main__':
