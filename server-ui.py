@@ -38,24 +38,38 @@ app.layout = html.Div(children=[
         ],
         value='CO2 level'
     ),
+
+    dcc.Dropdown(
+        id='legend-display-picker',
+        options=[
+            {'label': 'IP address', 'value': 'ip'},
+            {'label': 'Name', 'value': 'name'}
+        ],
+        value='name'
+    ),
+
+
 ])
 
 @app.callback(
-    [Output('data-plot', 'figure'), Output('plot-title', 'children')],
-    [Input('parameter-picker', 'value')])
-def update_output(value):
+    [Output('data-plot', 'figure'),
+    Output('plot-title', 'children')],
+    [Input('parameter-picker', 'value'), 
+    Input('legend-display-picker', 'value'),]
+    )
+def update_output(parameter, sensor_tag):
 
     fig = go.Figure()
-    for key, grp in df.groupby(['ip']):
-        fig.add_scatter(x=grp['Time'], y=grp[value], name=key, mode='lines + markers')
+    for key, grp in df.groupby([sensor_tag]):
+        fig.add_scatter(x=grp['Time'], y=grp[parameter], name=key, mode='lines + markers')
 
     units = {'Temperature':'C', 'Relative humidity':'%', 'Dew point':'C', 'CO2 level': 'ppm'}
     fig.layout = {
         "yaxis": {
-            "title": {"text":units[value]}
+            "title": {"text":units[parameter]}
             }
         }
-    return fig, value
+    return fig, parameter
 
 if __name__ == '__main__':
     app.run_server(debug=True)
