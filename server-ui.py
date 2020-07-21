@@ -1,5 +1,5 @@
 
-import dash, threading
+import dash, datetime
 import dash_core_components as dcc
 import dash_html_components as html
 import pandas as pd
@@ -12,8 +12,11 @@ from dash.dependencies import Input, Output
 server = Flask(__name__)
 app = dash.Dash(__name__, server = server)
 
+def get_today():
+    return datetime.date.today().strftime("%Y%m%d")
+
 plot_refresh_time = 60 #seconds
-data_source = './dash/20200720_sensors.csv'
+data_source = '/opt/sensor_data/dash/' + get_today() + '_sensors.csv'
 
 def get_and_condition_data(source = data_source):
     df = pd.read_csv(source)
@@ -85,4 +88,4 @@ def update_output(parameter, sensor_tag, n_intervals):
 
 
 if __name__ == '__main__':
-    app.run_server(debug=True)
+    app.run_server(debug=True, host='0.0.0.0')
