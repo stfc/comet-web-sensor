@@ -17,8 +17,8 @@ data_source = './dash/20200720_sensors.csv'
 
 def get_and_condition_data(source = data_source):
     df = pd.read_csv(source)
-    df = df.replace('connection','0')
-    df = df.replace('-','0')
+    df = df.replace('connection',np.nan)
+    df = df.replace('-',np.nan)
     df = df.astype({'Temperature':'float', 'Relative humidity':'float', 'Dew point':'float', 'CO2 level': 'float', 'Time':'datetime64[ns]'})
     return df
 
