@@ -41,7 +41,7 @@ def make_todays_csv_file_if_necessary(fields, root = os.getcwd()):
 
 if __name__ == "__main__":
 
-    sensor_parms = [{'ip':'130.246.68.74', 'name':'R1 Mech Zund '},
+    sensor_parms = [{'ip':'130.246.68.74', 'name':'R1 Mech Zund'},
                     {'ip':'130.246.68.75', 'name':'R1 T-fab office'},
                     {'ip':'130.246.68.81', 'name':'R1 Gemini office'},
                     {'ip':'130.246.68.82', 'name':'R1 Mech CNC'},

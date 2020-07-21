@@ -76,7 +76,12 @@ def update_output(parameter, sensor_tag, n_intervals):
     df = get_and_condition_data()
     fig = go.Figure()
     for key, grp in df.groupby([sensor_tag]):
-        fig.add_scatter(x=grp['Time'], y=grp[parameter], name=key, mode='lines + markers')
+        fig.add_scatter(
+            x=grp['Time'], 
+            y=grp[parameter], 
+            name=key, 
+            mode='lines + markers',
+            connectgaps=True)
 
     units = {'Temperature':'C', 'Relative humidity':'%', 'Dew point':'C', 'CO2 level': 'ppm'}
     fig.layout = {
