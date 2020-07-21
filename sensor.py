@@ -5,6 +5,7 @@ import datetime
 import time
 import socket
 import threading
+import http.client
 
 
 class Sensor():
@@ -24,11 +25,11 @@ class Sensor():
 
     def _read_xml_from_web(self):
         try:
-            r = urllib.request.urlopen("http://" + self._ip + "/values.xml", timeout=5)
+            r = urllib.request.urlopen("http://" + self._ip + "/values.xml", timeout=10)
             xml = ET.fromstring(r.read(2048))
             self._data_received = True
             return xml
-        except (TimeoutError, urllib.error.URLError, socket.timeout):
+        except (TimeoutError, urllib.error.URLError, socket.timeout, http.client.BadStatusLine):
             self._data_received = False
             return None
 
