@@ -18,15 +18,17 @@ def get_today():
 plot_refresh_time = 60 #seconds
 data_source = '/opt/sensor_data/dash/' + get_today() + '_sensors.csv'
 
-def get_and_condition_data(source = data_source):
+def get_and_condition_data(source):
     df = pd.read_csv(source)
     df = df.replace('connection',np.nan)
     df = df.replace('-',np.nan)
-    df = df.astype({'Temperature':'float', 'Relative humidity':'float', 'Dew point':'float', 'CO2 level': 'float', 'Time':'datetime64[ns]'})
+    df = df.astype({'Temperature':'float',
+                    'Relative humidity':'float', 
+                    'Dew point':'float', 
+                    'CO2 level': 'float', 
+                    'Time':'datetime64[ns]'})
     return df
 
-
-df = get_and_condition_data()
 
 app.layout = html.Div(children=[
 
@@ -73,7 +75,7 @@ app.layout = html.Div(children=[
     Input('interval-component', 'n_intervals')]
     )
 def update_output(parameter, sensor_tag, n_intervals):
-    df = get_and_condition_data()
+    df = get_and_condition_data('/opt/sensor_data/dash/' + get_today() + '_sensors.csv')
     fig = go.Figure()
     for key, grp in df.groupby([sensor_tag]):
         fig.add_scatter(
