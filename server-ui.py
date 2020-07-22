@@ -7,10 +7,13 @@ import plotly.graph_objs as go
 from flask import Flask
 import numpy as np
 from dash.dependencies import Input, Output
+from datetime import datetime as dt
+import dash_bootstrap_components as dbc
+import re
 
 
 server = Flask(__name__)
-app = dash.Dash(__name__, server = server)
+app = dash.Dash(__name__, server = server,external_stylesheets=[dbc.themes.BOOTSTRAP])
 
 def get_today():
     return datetime.date.today().strftime("%Y%m%d")
@@ -33,49 +36,81 @@ def get_and_condition_data(source):
 app.layout = html.Div(children=[
 
     html.H1(id='plot-title'),
-
+    dbc.Row(
+        [
+            dbc.Col(children=
+                    dcc.Dropdown(
+                        id='parameter-picker',
+                        options=[
+                            {'label': 'CO2 level', 'value': 'CO2 level'},
+                            {'label': 'Temperature', 'value': 'Temperature'},
+                            {'label': 'Dew point', 'value': 'Dew point'},
+                            {'label': 'Humidity', 'value': 'Relative humidity'}
+                        ],
+                        value='CO2 level',
+                        style={
+                            'width': '200px',
+                            'height': '50%',
+                            }
+                    ),
+                    width="auto"
+            ),
+            dbc.Col(children=
+                    dcc.Dropdown(
+                        id='legend-display-picker',
+                        options=[
+                            {'label': 'IP address', 'value': 'ip'},
+                            {'label': 'Name', 'value': 'name'}
+                        ],
+                        value='name',
+                        style={
+                            'width': '200px',
+                            'height': '50%',
+                            }
+                    ),
+                    width="auto"
+            ),
+            dbc.Col(children=
+                    dcc.DatePickerSingle(
+                    id='my-date-picker-single',
+                    min_date_allowed=dt(2020, 7, 20),
+                    max_date_allowed=datetime.date.today(),
+                    date=datetime.date.today()
+                    ),
+                    width="auto"
+            )
+        ]
+    ),
     dcc.Graph(
-        id='data-plot'
-    ),
-
-    dcc.Dropdown(
-        id='parameter-picker',
-        options=[
-            {'label': 'CO2 level', 'value': 'CO2 level'},
-            {'label': 'Temperature', 'value': 'Temperature'},
-            {'label': 'Dew point', 'value': 'Dew point'},
-            {'label': 'Humidity', 'value': 'Relative humidity'}
-        ],
-        value='CO2 level'
-    ),
-
-    dcc.Dropdown(
-        id='legend-display-picker',
-        options=[
-            {'label': 'IP address', 'value': 'ip'},
-            {'label': 'Name', 'value': 'name'}
-        ],
-        value='name'
-    ),
+            id='data-plot'
+            ),
+    
 
     dcc.Interval(
         id='interval-component',
         interval=plot_refresh_time*1000, # in milliseconds
         n_intervals=0
-        )
-
-
-])
+    )
+],
+    style={"padding": "20px"}
+)
 
 @app.callback(
     [Output('data-plot', 'figure'),
     Output('plot-title', 'children')],
     [Input('parameter-picker', 'value'), 
     Input('legend-display-picker', 'value'),
-    Input('interval-component', 'n_intervals')]
+    Input('interval-component', 'n_intervals'),
+    Input('my-date-picker-single', 'date')]
     )
-def update_output(parameter, sensor_tag, n_intervals):
-    df = get_and_condition_data('/opt/sensor_data/dash/' + get_today() + '_sensors.csv')
+def update_output(parameter, sensor_tag, n_intervals,date):
+    if date is not None:
+        date = dt.strptime(re.split('T| ', date)[0], '%Y-%m-%d')
+        date_string = date.strftime("%Y%m%d")
+        global data_source
+        data_source =  '/opt/sensor_data/dash/'+date_string +'_sensors.csv'
+
+    df = get_and_condition_data(data_source)
     fig = go.Figure()
     for key, grp in df.groupby([sensor_tag]):
         fig.add_scatter(
