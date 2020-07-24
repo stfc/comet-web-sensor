@@ -38,7 +38,7 @@ def get_and_condition_data(source):
 
 app.layout = html.Div(children=[
 
-    html.H1(id='plot-title'),
+    html.H1(id='plot-title',style={"text-align": "center","font-family": "Trocchi","color": "#7c795d"}),
     dbc.Row(
         [
             dbc.Col(children=
@@ -53,7 +53,7 @@ app.layout = html.Div(children=[
                         value='CO2 level',
                         style={
                             'width': '200px',
-                            'height': '50%',
+                            'height': '50%'
                             }
                     ),
                     width="auto"
@@ -69,6 +69,7 @@ app.layout = html.Div(children=[
                         style={
                             'width': '200px',
                             'height': '50%',
+                            'mergin-left': '50px'
                             }
                     ),
                     width="auto"
@@ -82,7 +83,8 @@ app.layout = html.Div(children=[
                     ),
                     width="auto"
             )
-        ]
+        ],style = {'padding-left': '100px',
+                   'padding-top': '50px'}
     ),
     dcc.Graph(
             id='data-plot'
