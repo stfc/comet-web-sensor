@@ -1,4 +1,5 @@
 
+#!/usr/bin/env python3
 import dash, datetime
 import dash_core_components as dcc
 import dash_html_components as html
@@ -147,7 +148,8 @@ def update_output(parameter, sensor_tag, n_intervals,date,n_clicks):
     fig.layout = {
         "yaxis": {
             "title": {"text":units[parameter]}
-            }
+            },
+            "uirevision":parameter
         }
     return fig, parameter
 
