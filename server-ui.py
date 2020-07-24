@@ -10,15 +10,18 @@ from dash.dependencies import Input, Output
 from datetime import datetime as dt
 import dash_bootstrap_components as dbc
 import re
+import tkinter as tk
+from tkinter import *
+from tkinter import filedialog
 
 
 server = Flask(__name__)
-app = dash.Dash(__name__, server = server,external_stylesheets=[dbc.themes.BOOTSTRAP])
+app = dash.Dash(__name__, server = server,external_stylesheets=[dbc.themes.BOOTSTRAP,'https://codepen.io/chriddyp/pen/bWLwgP.css'])
 
 def get_today():
     return datetime.date.today().strftime("%Y%m%d")
 
-plot_refresh_time = 60 #seconds
+plot_refresh_time = 20*60 #seconds
 data_source = '/opt/sensor_data/dash/' + get_today() + '_sensors.csv'
 
 def get_and_condition_data(source):
@@ -84,6 +87,10 @@ app.layout = html.Div(children=[
     dcc.Graph(
             id='data-plot'
             ),
+
+    html.Button('Refresh Now', id='refresh-btn', n_clicks=0),
+    html.Button('Save As', id='save-btn', n_clicks=0),
+    html.Div(id='output-container-button'),
     
 
     dcc.Interval(
@@ -96,14 +103,28 @@ app.layout = html.Div(children=[
 )
 
 @app.callback(
+    Output('output-container-button', 'children'),
+    [Input('save-btn', 'n_clicks')]
+    )
+def export_csv(n_clicks):
+    if n_clicks>0:
+        global data_source
+        df = get_and_condition_data(data_source)
+
+        ## This will save into current directory
+        ## To be chenged into user choosing
+        df.to_csv("./data_exported",index=False)
+
+@app.callback(
     [Output('data-plot', 'figure'),
     Output('plot-title', 'children')],
     [Input('parameter-picker', 'value'), 
     Input('legend-display-picker', 'value'),
     Input('interval-component', 'n_intervals'),
-    Input('my-date-picker-single', 'date')]
+    Input('my-date-picker-single', 'date'),
+    Input('refresh-btn', 'n_clicks')]
     )
-def update_output(parameter, sensor_tag, n_intervals,date):
+def update_output(parameter, sensor_tag, n_intervals,date,n_clicks):
     if date is not None:
         date = dt.strptime(re.split('T| ', date)[0], '%Y-%m-%d')
         date_string = date.strftime("%Y%m%d")
