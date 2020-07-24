@@ -1,4 +1,3 @@
-
 #!/usr/bin/env python3
 import dash, datetime
 import dash_core_components as dcc
@@ -7,23 +6,23 @@ import pandas as pd
 import plotly.graph_objs as go 
 from flask import Flask
 import numpy as np
-from dash.dependencies import Input, Output
+from dash.dependencies import Input, Output, State
 from datetime import datetime as dt
 import dash_bootstrap_components as dbc
 import re
-import tkinter as tk
-from tkinter import *
-from tkinter import filedialog
+from dash_extensions import Download
+from dash_extensions.snippets import send_data_frame
 
 
 server = Flask(__name__)
-app = dash.Dash(__name__, server = server,external_stylesheets=[dbc.themes.BOOTSTRAP,'https://codepen.io/chriddyp/pen/bWLwgP.css'])
+app = dash.Dash(__name__, server = server,
+                external_stylesheets=[dbc.themes.BOOTSTRAP,
+                'https://codepen.io/chriddyp/pen/bWLwgP.css'])
 
 def get_today():
     return datetime.date.today().strftime("%Y%m%d")
 
 plot_refresh_time = 20*60 #seconds
-data_source = '/opt/sensor_data/dash/' + get_today() + '_sensors.csv'
 
 def get_and_condition_data(source):
     df = pd.read_csv(source)
@@ -92,9 +91,8 @@ app.layout = html.Div(children=[
             ),
 
     html.Button('Refresh Now', id='refresh-btn', n_clicks=0),
-    html.Button('Save As', id='save-btn', n_clicks=0),
-    html.Div(id='output-container-button'),
-    
+    html.Button("Download", id="export_btn", n_clicks=0),
+    Download(id="download"),
 
     dcc.Interval(
         id='interval-component',
@@ -106,17 +104,18 @@ app.layout = html.Div(children=[
 )
 
 @app.callback(
-    Output('output-container-button', 'children'),
-    [Input('save-btn', 'n_clicks')]
+    Output("download", "data"),
+    [Input("export_btn", "n_clicks")],
+    [State('my-date-picker-single', 'date')]
     )
-def export_csv(n_clicks):
-    if n_clicks>0:
-        global data_source
+def export_csv(n_nlicks,date):
+    if(n_nlicks>0):
+        date = dt.strptime(re.split('T| ', date)[0], '%Y-%m-%d')
+        date_string = date.strftime("%Y%m%d")
+        data_source = date_string +'_sensors.csv'
         df = get_and_condition_data(data_source)
 
-        ## This will save into current directory
-        ## To be chenged into user choosing
-        df.to_csv("./data_exported",index=False)
+        return send_data_frame(df.to_csv, date_string+"_data.csv")
 
 @app.callback(
     [Output('data-plot', 'figure'),
@@ -131,7 +130,6 @@ def update_output(parameter, sensor_tag, n_intervals,date,n_clicks):
     if date is not None:
         date = dt.strptime(re.split('T| ', date)[0], '%Y-%m-%d')
         date_string = date.strftime("%Y%m%d")
-        global data_source
         data_source =  '/opt/sensor_data/dash/'+date_string +'_sensors.csv'
 
     df = get_and_condition_data(data_source)
