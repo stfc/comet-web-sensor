@@ -12,7 +12,7 @@ import dash_bootstrap_components as dbc
 import re
 from dash_extensions import Download
 from dash_extensions.snippets import send_data_frame
-
+import base64
 
 server = Flask(__name__)
 app = dash.Dash(__name__, server = server,
@@ -36,9 +36,17 @@ def get_and_condition_data(source):
     return df
 
 
+image_filename = 'CLFlogo.png'
+encoded_image = base64.b64encode(open(image_filename, 'rb').read())
+
 app.layout = html.Div(children=[
 
-    html.H1(id='plot-title',style={"text-align": "center","font-family": "Trocchi","color": "#7c795d"}),
+    dbc.Row([
+        dbc.Col(children= html.Img(src='data:image/png;base64,{}'.format(encoded_image.decode())),width='10%'),
+        dbc.Col(children= html.H1(id='plot-title',
+                style={"text-align": "center","font-family": "Trocchi","color": "#7c795d","width": "90%"}))
+        ]),
+    
     dbc.Row(
         [
             dbc.Col(children=
@@ -93,6 +101,13 @@ app.layout = html.Div(children=[
     html.Button('Refresh Now', id='refresh-btn', n_clicks=0),
     html.Button("Download", id="export_btn", n_clicks=0),
     Download(id="download"),
+    dcc.ConfirmDialogProvider(
+        children=html.Button(
+            'Contact Us',
+        ),
+        id='contact-us',
+        message='Please contact one of the following emails:\n\n- christopher.gregory@stfc.ac.uk\n- ahmad.alsabbagh@stfc.ac.uk'
+    ),
 
     dcc.Interval(
         id='interval-component',
