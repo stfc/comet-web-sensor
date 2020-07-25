@@ -60,7 +60,7 @@ app.layout = html.Div(children=[
                         ],
                         value='CO2 level',
                         style={
-                            'width': '200px',
+                            'width': '150px',
                             'height': '50%'
                             }
                     ),
@@ -75,7 +75,23 @@ app.layout = html.Div(children=[
                         ],
                         value='name',
                         style={
-                            'width': '200px',
+                            'width': '150px',
+                            'height': '50%',
+                            'mergin-left': '50px'
+                            }
+                    ),
+                    width="auto"
+            ),
+            dbc.Col(children=
+                    dcc.Dropdown(
+                        id='data-resolution',
+                        options=[
+                            {'label': '5 minutes', 'value': '5'},
+                            {'label': '10 minutes', 'value': '10'}
+                        ],
+                        value='5',
+                        style={
+                            'width': '150px',
                             'height': '50%',
                             'mergin-left': '50px'
                             }
@@ -139,9 +155,10 @@ def export_csv(n_nlicks,date):
     Input('legend-display-picker', 'value'),
     Input('interval-component', 'n_intervals'),
     Input('my-date-picker-single', 'date'),
-    Input('refresh-btn', 'n_clicks')]
+    Input('refresh-btn', 'n_clicks'),
+    Input('data-resolution', 'value')]
     )
-def update_output(parameter, sensor_tag, n_intervals,date,n_clicks):
+def update_output(parameter, sensor_tag, n_intervals,date,n_clicks,data_resolution):
     if date is not None:
         date = dt.strptime(re.split('T| ', date)[0], '%Y-%m-%d')
         date_string = date.strftime("%Y%m%d")
@@ -149,10 +166,19 @@ def update_output(parameter, sensor_tag, n_intervals,date,n_clicks):
 
     df = get_and_condition_data(data_source)
     fig = go.Figure()
+    start_time = str(date) + " 06:00:00"
+    
     for key, grp in df.groupby([sensor_tag]):
+        if(int(data_resolution) == 10):
+            x_res=grp['Time'][::10]
+            y_res=grp[parameter][::10]
+        else:
+            x_res=grp['Time'][::5]
+            y_res=grp[parameter][::5]
+
         fig.add_scatter(
-            x=grp['Time'], 
-            y=grp[parameter], 
+            x=x_res[x_res > start_time], 
+            y=y_res, 
             name=key, 
             mode='lines + markers',
             connectgaps=True)
