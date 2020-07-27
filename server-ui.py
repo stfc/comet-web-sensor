@@ -86,6 +86,7 @@ app.layout = html.Div(children=[
                     dcc.Dropdown(
                         id='data-resolution',
                         options=[
+                            {'label': '1 minute', 'value': '1'},
                             {'label': '5 minutes', 'value': '5'},
                             {'label': '10 minutes', 'value': '10'}
                         ],
@@ -122,7 +123,7 @@ app.layout = html.Div(children=[
             'Contact Us',
         ),
         id='contact-us',
-        message='Please contact one of the following emails:\n\n- christopher.gregory@stfc.ac.uk\n- ahmad.alsabbagh@stfc.ac.uk'
+        message='Please contact one of the following emails:\n\n- ahmad.alsabbagh@stfc.ac.uk\n- christopher.gregory@stfc.ac.uk'
     ),
 
     dcc.Interval(
@@ -143,10 +144,10 @@ def export_csv(n_nlicks,date):
     if(n_nlicks>0):
         date = dt.strptime(re.split('T| ', date)[0], '%Y-%m-%d')
         date_string = date.strftime("%Y%m%d")
-        data_source = date_string +'_sensors.csv'
+        data_source = '/opt/sensor_data/dash/'+ date_string +'_sensors.csv'
         df = get_and_condition_data(data_source)
 
-        return send_data_frame(df.to_csv, date_string+"_data.csv")
+        return send_data_frame(df.to_csv, date_string+"_data.csv",index=False)
 
 @app.callback(
     [Output('data-plot', 'figure'),
@@ -167,17 +168,21 @@ def update_output(parameter, sensor_tag, n_intervals,date,n_clicks,data_resoluti
     df = get_and_condition_data(data_source)
     fig = go.Figure()
     start_time = str(date) + " 06:00:00"
+    df = df[df['Time'] > start_time]
     
     for key, grp in df.groupby([sensor_tag]):
         if(int(data_resolution) == 10):
             x_res=grp['Time'][::10]
             y_res=grp[parameter][::10]
+        elif(int(data_resolution) == 1):
+            x_res=grp['Time'][::1]
+            y_res=grp[parameter][::1]
         else:
             x_res=grp['Time'][::5]
             y_res=grp[parameter][::5]
 
         fig.add_scatter(
-            x=x_res[x_res > start_time], 
+            x= x_res, 
             y=y_res, 
             name=key, 
             mode='lines + markers',
