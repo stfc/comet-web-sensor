@@ -19,9 +19,6 @@ app = dash.Dash(__name__, server = server,
                 external_stylesheets=[dbc.themes.BOOTSTRAP,
                 'https://codepen.io/chriddyp/pen/bWLwgP.css'])
 
-def get_today():
-    return datetime.date.today().strftime("%Y%m%d")
-
 plot_refresh_time = 20*60 #seconds
 
 def get_and_condition_data(source):
@@ -49,7 +46,7 @@ app.layout = html.Div(children=[
     
     dbc.Row(
         [
-            dbc.Col(children=
+            dbc.Col(children=[html.P('Data type',style={'font-size':'16px','font-weight': 'bold',"color": "#7c795d"}),
                     dcc.Dropdown(
                         id='parameter-picker',
                         options=[
@@ -63,10 +60,10 @@ app.layout = html.Div(children=[
                             'width': '150px',
                             'height': '50%'
                             }
-                    ),
-                    width="auto"
+                    )],
+            width="auto"
             ),
-            dbc.Col(children=
+            dbc.Col(children=[html.P('Legend value',style={'font-size':'16px','font-weight': 'bold',"color": "#7c795d"}),
                     dcc.Dropdown(
                         id='legend-display-picker',
                         options=[
@@ -79,12 +76,12 @@ app.layout = html.Div(children=[
                             'height': '50%',
                             'mergin-left': '50px'
                             }
-                    ),
+                    )],
                     width="auto"
             ),
-            dbc.Col(children=
+            dbc.Col(children=[html.P('Sample interval',style={'font-size':'16px','font-weight': 'bold',"color": "#7c795d"}),
                     dcc.Dropdown(
-                        id='data-resolution',
+                        id='sample-time-interval',
                         options=[
                             {'label': '1 minute', 'value': '1'},
                             {'label': '5 minutes', 'value': '5'},
@@ -96,31 +93,33 @@ app.layout = html.Div(children=[
                             'height': '50%',
                             'mergin-left': '50px'
                             }
-                    ),
+                    )],
                     width="auto"
             ),
-            dbc.Col(children=
+            dbc.Col(children=[html.P('Date',style={'font-size':'16px','font-weight': 'bold',"color": "#7c795d"}),
                     dcc.DatePickerSingle(
                     id='my-date-picker-single',
                     min_date_allowed=dt(2020, 7, 20),
                     max_date_allowed=datetime.date.today(),
                     date=datetime.date.today()
-                    ),
+                    )],
                     width="auto"
             )
-        ],style = {'padding-left': '100px',
+        ],
+        style = {'padding-left': '100px',
                    'padding-top': '50px'}
     ),
     dcc.Graph(
             id='data-plot'
             ),
 
-    html.Button('Refresh Now', id='refresh-btn', n_clicks=0),
-    html.Button("Download", id="export_btn", n_clicks=0),
+    html.Button('Refresh Now', id='refresh-btn', n_clicks=0, style={'margin-left':'20px' }),
+    html.Button("Export CSV", id="export_btn", n_clicks=0, style={'margin-left':'20px' }),
     Download(id="download"),
     dcc.ConfirmDialogProvider(
         children=html.Button(
             'Contact Us',
+            style={'position':'absolute','bottom':'5%','margin-left':'20px' }
         ),
         id='contact-us',
         message='Please contact one of the following emails:\n\n- ahmad.alsabbagh@stfc.ac.uk\n- christopher.gregory@stfc.ac.uk'
@@ -157,9 +156,9 @@ def export_csv(n_nlicks,date):
     Input('interval-component', 'n_intervals'),
     Input('my-date-picker-single', 'date'),
     Input('refresh-btn', 'n_clicks'),
-    Input('data-resolution', 'value')]
+    Input('sample-time-interval', 'value')]
     )
-def update_output(parameter, sensor_tag, n_intervals,date,n_clicks,data_resolution):
+def update_output(parameter, sensor_tag, n_intervals,date,n_clicks,sample_interval):
     if date is not None:
         date = dt.strptime(re.split('T| ', date)[0], '%Y-%m-%d')
         date_string = date.strftime("%Y%m%d")
@@ -171,19 +170,11 @@ def update_output(parameter, sensor_tag, n_intervals,date,n_clicks,data_resoluti
     df = df[df['Time'] > start_time]
     
     for key, grp in df.groupby([sensor_tag]):
-        if(int(data_resolution) == 10):
-            x_res=grp['Time'][::10]
-            y_res=grp[parameter][::10]
-        elif(int(data_resolution) == 1):
-            x_res=grp['Time'][::1]
-            y_res=grp[parameter][::1]
-        else:
-            x_res=grp['Time'][::5]
-            y_res=grp[parameter][::5]
+        sample_interval = int(sample_interval)
 
         fig.add_scatter(
-            x= x_res, 
-            y=y_res, 
+            x= grp['Time'][::sample_interval], 
+            y=grp[parameter][::sample_interval], 
             name=key, 
             mode='lines + markers',
             connectgaps=True)
