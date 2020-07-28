@@ -6,22 +6,6 @@ import pandas as pd
 import plotly.graph_objs as go 
 from flask import Flask
 import numpy as np
-<<<<<<< HEAD
-from dash.dependencies import Input, Output
-from datetime import datetime as dt
-import dash_bootstrap_components as dbc
-import re
-
-
-server = Flask(__name__)
-app = dash.Dash(__name__, server = server,external_stylesheets=[dbc.themes.BOOTSTRAP])
-
-def get_today():
-    return datetime.date.today().strftime("%Y%m%d")
-
-plot_refresh_time = 60 #seconds
-data_source = '/opt/sensor_data/dash/' + get_today() + '_sensors.csv'
-=======
 from dash.dependencies import Input, Output, State
 from datetime import datetime as dt
 import dash_bootstrap_components as dbc
@@ -36,7 +20,6 @@ app = dash.Dash(__name__, server = server,
                 'https://codepen.io/chriddyp/pen/bWLwgP.css'])
 
 plot_refresh_time = 20*60 #seconds
->>>>>>> feature-data-resolution
 
 def get_and_condition_data(source):
     df = pd.read_csv(source)
@@ -50,14 +33,6 @@ def get_and_condition_data(source):
     return df
 
 
-<<<<<<< HEAD
-app.layout = html.Div(children=[
-
-    html.H1(id='plot-title'),
-    dbc.Row(
-        [
-            dbc.Col(children=
-=======
 image_filename = 'CLFlogo.png'
 encoded_image = base64.b64encode(open(image_filename, 'rb').read())
 
@@ -72,7 +47,6 @@ app.layout = html.Div(children=[
     dbc.Row(
         [
             dbc.Col(children=[html.P('Data type',style={'font-size':'16px','font-weight': 'bold',"color": "#7c795d"}),
->>>>>>> feature-data-resolution
                     dcc.Dropdown(
                         id='parameter-picker',
                         options=[
@@ -83,15 +57,6 @@ app.layout = html.Div(children=[
                         ],
                         value='CO2 level',
                         style={
-<<<<<<< HEAD
-                            'width': '200px',
-                            'height': '50%',
-                            }
-                    ),
-                    width="auto"
-            ),
-            dbc.Col(children=
-=======
                             'width': '150px',
                             'height': '50%'
                             }
@@ -99,7 +64,6 @@ app.layout = html.Div(children=[
             width="auto"
             ),
             dbc.Col(children=[html.P('Legend value',style={'font-size':'16px','font-weight': 'bold',"color": "#7c795d"}),
->>>>>>> feature-data-resolution
                     dcc.Dropdown(
                         id='legend-display-picker',
                         options=[
@@ -108,15 +72,6 @@ app.layout = html.Div(children=[
                         ],
                         value='name',
                         style={
-<<<<<<< HEAD
-                            'width': '200px',
-                            'height': '50%',
-                            }
-                    ),
-                    width="auto"
-            ),
-            dbc.Col(children=
-=======
                             'width': '150px',
                             'height': '50%',
                             'mergin-left': '50px'
@@ -142,32 +97,21 @@ app.layout = html.Div(children=[
                     width="auto"
             ),
             dbc.Col(children=[html.P('Date',style={'font-size':'16px','font-weight': 'bold',"color": "#7c795d"}),
->>>>>>> feature-data-resolution
                     dcc.DatePickerSingle(
                     id='my-date-picker-single',
                     min_date_allowed=dt(2020, 7, 20),
                     max_date_allowed=datetime.date.today(),
                     date=datetime.date.today()
-<<<<<<< HEAD
-                    ),
-                    width="auto"
-            )
-        ]
-=======
                     )],
                     width="auto"
             )
         ],
         style = {'padding-left': '100px',
                    'padding-top': '50px'}
->>>>>>> feature-data-resolution
     ),
     dcc.Graph(
             id='data-plot'
             ),
-<<<<<<< HEAD
-    
-=======
 
     html.Button('Refresh Now', id='refresh-btn', n_clicks=0, style={'margin-left':'20px' }),
     html.Button("Export CSV", id="export_btn", n_clicks=0, style={'margin-left':'20px' }),
@@ -180,7 +124,6 @@ app.layout = html.Div(children=[
         id='contact-us',
         message='Please contact one of the following emails:\n\n- ahmad.alsabbagh@stfc.ac.uk\n- christopher.gregory@stfc.ac.uk'
     ),
->>>>>>> feature-data-resolution
 
     dcc.Interval(
         id='interval-component',
@@ -192,8 +135,6 @@ app.layout = html.Div(children=[
 )
 
 @app.callback(
-<<<<<<< HEAD
-=======
     Output("download", "data"),
     [Input("export_btn", "n_clicks")],
     [State('my-date-picker-single', 'date')]
@@ -208,21 +149,11 @@ def export_csv(n_nlicks,date):
         return send_data_frame(df.to_csv, date_string+"_data.csv",index=False)
 
 @app.callback(
->>>>>>> feature-data-resolution
     [Output('data-plot', 'figure'),
     Output('plot-title', 'children')],
     [Input('parameter-picker', 'value'), 
     Input('legend-display-picker', 'value'),
     Input('interval-component', 'n_intervals'),
-<<<<<<< HEAD
-    Input('my-date-picker-single', 'date')]
-    )
-def update_output(parameter, sensor_tag, n_intervals,date):
-    if date is not None:
-        date = dt.strptime(re.split('T| ', date)[0], '%Y-%m-%d')
-        date_string = date.strftime("%Y%m%d")
-        global data_source
-=======
     Input('my-date-picker-single', 'date'),
     Input('refresh-btn', 'n_clicks'),
     Input('sample-time-interval', 'value')]
@@ -231,17 +162,10 @@ def update_output(parameter, sensor_tag, n_intervals,date,n_clicks,sample_interv
     if date is not None:
         date = dt.strptime(re.split('T| ', date)[0], '%Y-%m-%d')
         date_string = date.strftime("%Y%m%d")
->>>>>>> feature-data-resolution
         data_source =  '/opt/sensor_data/dash/'+date_string +'_sensors.csv'
 
     df = get_and_condition_data(data_source)
     fig = go.Figure()
-<<<<<<< HEAD
-    for key, grp in df.groupby([sensor_tag]):
-        fig.add_scatter(
-            x=grp['Time'], 
-            y=grp[parameter], 
-=======
     start_time = str(date) + " 06:00:00"
     df = df[df['Time'] > start_time]
     
@@ -251,7 +175,6 @@ def update_output(parameter, sensor_tag, n_intervals,date,n_clicks,sample_interv
         fig.add_scatter(
             x= grp['Time'][::sample_interval], 
             y=grp[parameter][::sample_interval], 
->>>>>>> feature-data-resolution
             name=key, 
             mode='lines + markers',
             connectgaps=True)
@@ -260,19 +183,11 @@ def update_output(parameter, sensor_tag, n_intervals,date,n_clicks,sample_interv
     fig.layout = {
         "yaxis": {
             "title": {"text":units[parameter]}
-<<<<<<< HEAD
-            }
-=======
             },
             "uirevision":parameter
->>>>>>> feature-data-resolution
         }
     return fig, parameter
 
 
 if __name__ == '__main__':
-<<<<<<< HEAD
     app.run_server(debug=True, host='0.0.0.0')
-=======
-    app.run_server(debug=True, host='0.0.0.0')
->>>>>>> feature-data-resolution
