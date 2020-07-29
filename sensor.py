@@ -13,10 +13,16 @@ class Sensor():
     def __init__(self,parms):
         self._ip = parms['ip']
         self._name = parms['name']
-        self._data_fields = ['Time']
+        self._data_fields = ['Time', 'Temperature', 'Relative humidity', 'Dew point', 'CO2 level']
+        self._latest_data  = {
+                                'Time':self._generate_timestamp(),
+                                'Temperature': '-', 
+                                'Relative humidity': '-', 
+                                'Dew point': '-', 
+                                'CO2 level': '-'
+                            }
         self._data_received = False
         self._read_thread = None
-        self._latest_data = dict()
     
     
     def _generate_timestamp(self, format = "%m/%d/%Y %H:%M:%S"):
@@ -47,7 +53,8 @@ class Sensor():
 
     def _get_latest_data(self, interval=60):
         while True:
-            xml = self._read_xml_from_web()
+            #xml = self._read_xml_from_web()
+            xml = self._read_xml_from_file()
             if not self._data_received:
                 data = self._sub_data_with_error('connection')
             elif not self._xml_is_valid(xml):
@@ -88,16 +95,12 @@ class Sensor():
 
     @data_fields.setter
     def data_fields(self, fields):
-        if not 'Time' in fields:
-            fields.insert(0,'Time')
-        self._data_fields = fields
-        self._latest_data = {field:'-' for field in fields}
-        self._latest_data['Time']=self._generate_timestamp()
+        pass
 
 
     @property
     def ip(self):
-        return self._ip.replace('.','_')
+        return self._ip
 
 
     @ip.setter
