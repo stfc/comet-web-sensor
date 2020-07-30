@@ -53,8 +53,8 @@ class Sensor():
 
     def _get_latest_data(self, interval=60):
         while True:
-            #xml = self._read_xml_from_web()
-            xml = self._read_xml_from_file()
+            xml = self._read_xml_from_web()
+            #xml = self._read_xml_from_file()
             if not self._data_received:
                 data = self._sub_data_with_error('connection')
             elif not self._xml_is_valid(xml):
