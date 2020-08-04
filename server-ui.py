@@ -14,6 +14,7 @@ from dash_extensions import Download
 from dash_extensions.snippets import send_data_frame
 import base64
 import dash_table
+import math
 
 server = Flask(__name__)
 app = dash.Dash(__name__, server = server,
@@ -228,13 +229,6 @@ def update_output(parameter, sensor_tag, n_intervals,date,n_clicks,sample_interv
             name=key, 
             mode='lines + markers',
             connectgaps=True)
-        
-        table_data.append({
-            "name": key,
-            "avg": "{:.2f}".format(grp[parameter].mean()),
-            "peak": grp[parameter].max(),
-            "rms": "{:.2f}".format(rms(grp[parameter]))
-        })
 
     ## Filter according to working hours (8:00-16:00)
     ## Time interval to rectified with this range or add it as another option?
@@ -243,6 +237,8 @@ def update_output(parameter, sensor_tag, n_intervals,date,n_clicks,sample_interv
     dfw = df[(df['Time'] > start_time_w) & (df['Time'] < end_time_w)]
     table_data = []
     for key, grp in dfw.groupby([sensor_tag]):
+        if(math.isnan(grp[parameter].mean())):
+            continue
         table_data.append({
             "name": key,
             "avg": "{:.2f}".format(grp[parameter].mean()),
