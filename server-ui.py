@@ -13,6 +13,7 @@ import re
 from dash_extensions import Download
 from dash_extensions.snippets import send_data_frame
 import base64
+import dash_table
 
 server = Flask(__name__)
 app = dash.Dash(__name__, server = server,
@@ -126,16 +127,32 @@ app.layout = html.Div(children=[
                    'padding-top': '50px'}
     ),
     dcc.Graph(
-            id='data-plot'
-            ),
+            id='data-plot',
+            style= {
+                'height': 500
+            }),
 
-    html.Button('Refresh Now', id='refresh-btn', n_clicks=0, style={'margin-left':'20px' }),
+    dash_table.DataTable(
+    id='table',
+    columns = [{"id": "name", "name": "name"},
+                {"id": "avg", "name": "Average"},
+                {"id": "peak", "name": "Peak"},
+                {"id": "rms", "name": "RMS"}],
+    
+    style_table = { "margin-left":"5%","width" : "45%"},
+    style_cell={
+        'text-align': 'left',
+        'width': '150px'
+    }),
+
+    html.Button('Refresh Now', id='refresh-btn', n_clicks=0, style={'margin-left':'20px','margin-top':'20px' }),
     html.Button("Export CSV", id="export_btn", n_clicks=0, style={'margin-left':'20px' }),
     Download(id="download"),
+
     dcc.ConfirmDialogProvider(
         children=html.Button(
             'Contact Us',
-            style={'position':'absolute','bottom':'5%','margin-left':'20px' }
+            style={'bottom':'5%','margin-left':'20px' }
         ),
         id='contact-us',
         message='Please contact one of the following emails:\n\n- ahmad.alsabbagh@stfc.ac.uk\n- christopher.gregory@stfc.ac.uk'
@@ -154,14 +171,13 @@ app.layout = html.Div(children=[
     [Output('my-date-picker-single', 'max_date_allowed'),
     Output('my-date-picker-single', 'date')],
     [Input('interval-component', 'n_intervals')],
-    [State('my-date-picker-single', 'date'),
-    State('my-date-picker-single', 'max_date_allowed')]
+    [State('my-date-picker-single', 'date')]
     )
-def change(interval, date, max_date):
-    if(date != max_date and dt.now().hour >= 0):
+def change(interval, date):
+    if(dt.now().hour == 0):
         return datetime.date.today(), datetime.date.today()
     else:
-        return max_date, date
+        return datetime.date.today(), date
 
 @app.callback(
     Output("download", "data"),
@@ -177,9 +193,12 @@ def export_csv(n_nlicks,date):
 
         return send_data_frame(df.to_csv, date_string+"_data.csv",index=False)
 
+rms = lambda d: np.sqrt ((d ** 2) .sum ()/len(d))
+
 @app.callback(
     [Output('data-plot', 'figure'),
-    Output('plot-title', 'children')],
+    Output('plot-title', 'children'),
+    Output('table', 'data')],
     [Input('parameter-picker', 'value'), 
     Input('legend-display-picker', 'value'),
     Input('interval-component', 'n_intervals'),
@@ -199,7 +218,7 @@ def update_output(parameter, sensor_tag, n_intervals,date,n_clicks,sample_interv
     start_time = str(date) + " " + data_interval +":00:00"
     end_time = str(date) + " " + ("17" if int(data_interval) else "23" ) +":59:59"
     df = df[(df['Time'] > start_time) & (df['Time'] < end_time)]
-    
+    table_data = []
     for key, grp in df.groupby([sensor_tag]):
         sample_interval = int(sample_interval)
 
@@ -209,6 +228,27 @@ def update_output(parameter, sensor_tag, n_intervals,date,n_clicks,sample_interv
             name=key, 
             mode='lines + markers',
             connectgaps=True)
+        
+        table_data.append({
+            "name": key,
+            "avg": "{:.2f}".format(grp[parameter].mean()),
+            "peak": grp[parameter].max(),
+            "rms": "{:.2f}".format(rms(grp[parameter]))
+        })
+
+    ## Filter according to working hours (8:00-16:00)
+    ## Time interval to rectified with this range or add it as another option?
+    start_time_w = str(date) + " 8:00:00"
+    end_time_w = str(date) + " 16:00:00"
+    dfw = df[(df['Time'] > start_time_w) & (df['Time'] < end_time_w)]
+    table_data = []
+    for key, grp in dfw.groupby([sensor_tag]):
+        table_data.append({
+            "name": key,
+            "avg": "{:.2f}".format(grp[parameter].mean()),
+            "peak": grp[parameter].max(),
+            "rms": "{:.2f}".format(rms(grp[parameter]))
+        })
 
     units = {'Temperature':'C', 'Relative humidity':'%', 'Dew point':'C', 'CO2 level': 'ppm'}
     fig.layout = {
@@ -217,7 +257,8 @@ def update_output(parameter, sensor_tag, n_intervals,date,n_clicks,sample_interv
             },
             "uirevision":date
         }
-    return fig, parameter
+
+    return fig, parameter, table_data
 
 
 if __name__ == '__main__':
