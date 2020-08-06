@@ -122,6 +122,12 @@ app.layout = html.Div(children=[
                     date=datetime.date.today()
                     )],
                     width="auto"
+            ),
+            dbc.Col(html.Button('Refresh', id='refresh-btn', n_clicks=0,style={"padding": "0px", "width":"100px", "margin-top":"33px"}),
+                    width="auto"
+            ),
+            dbc.Col(children=[html.Button("Export CSV", id="export_btn", n_clicks=0, style={"padding": "0px","width":"100px", "margin-top":"33px"}),Download(id="download")],
+                    width = "auto"
             )
         ],
         style = {'padding-left': '100px',
@@ -130,12 +136,12 @@ app.layout = html.Div(children=[
     dcc.Graph(
             id='data-plot',
             style= {
-                'height': 500
+                'height': 600
             }),
 
     dash_table.DataTable(
     id='table',
-    columns = [{"id": "name", "name": "name"},
+    columns = [{"id": "name", "name": "Name"},
                 {"id": "avg", "name": "Average"},
                 {"id": "peak", "name": "Peak"},
                 {"id": "rms", "name": "RMS"}],
@@ -146,14 +152,10 @@ app.layout = html.Div(children=[
         'width': '150px'
     }),
 
-    html.Button('Refresh Now', id='refresh-btn', n_clicks=0, style={'margin-left':'20px','margin-top':'20px' }),
-    html.Button("Export CSV", id="export_btn", n_clicks=0, style={'margin-left':'20px' }),
-    Download(id="download"),
-
     dcc.ConfirmDialogProvider(
         children=html.Button(
             'Contact Us',
-            style={'bottom':'5%','margin-left':'20px' }
+            style={'bottom':'5%','margin-left':'20px', "margin-top":"20px" }
         ),
         id='contact-us',
         message='Please contact one of the following emails:\n\n- ahmad.alsabbagh@stfc.ac.uk\n- christopher.gregory@stfc.ac.uk'
