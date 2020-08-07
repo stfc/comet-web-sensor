@@ -138,6 +138,9 @@ app.layout = html.Div(children=[
             style= {
                 'height': 600
             }),
+    dcc.Graph(
+            id='average-plot',
+            ),
 
     dash_table.DataTable(
     id='table',
@@ -201,7 +204,8 @@ rms = lambda d: np.sqrt ((d ** 2) .sum ()/len(d))
 @app.callback(
     [Output('data-plot', 'figure'),
     Output('plot-title', 'children'),
-    Output('table', 'data')],
+    Output('table', 'data'),
+    Output('average-plot', 'figure')],
     [Input('parameter-picker', 'value'), 
     Input('legend-display-picker', 'value'),
     Input('interval-component', 'n_intervals'),
@@ -218,6 +222,7 @@ def update_output(parameter, sensor_tag, n_intervals,date,n_clicks,sample_interv
 
     df = get_and_condition_data(data_source)
     fig = go.Figure()
+    fig_avg = go.Figure()
     start_time = str(date) + " " + data_interval +":00:00"
     end_time = str(date) + " " + ("17" if int(data_interval) else "23" ) +":59:59"
     df = df[(df['Time'] > start_time) & (df['Time'] < end_time)]
@@ -236,9 +241,18 @@ def update_output(parameter, sensor_tag, n_intervals,date,n_clicks,sample_interv
     ## Time interval to rectified with this range or add it as another option?
     start_time_w = str(date) + " 8:00:00"
     end_time_w = str(date) + " 16:00:00"
-    dfw = df[(df['Time'] > start_time_w) & (df['Time'] < end_time_w)]
+    dfw = get_and_condition_data('sum.csv')
     table_data = []
+
     for key, grp in dfw.groupby([sensor_tag]):
+
+        fig_avg.add_scatter(
+            x= grp['Time'], 
+            y=grp[parameter], 
+            name=key, 
+            mode='lines + markers',
+            connectgaps=True)
+
         if(math.isnan(grp[parameter].mean())):
             continue
         table_data.append({
@@ -256,7 +270,7 @@ def update_output(parameter, sensor_tag, n_intervals,date,n_clicks,sample_interv
             "uirevision":date
         }
 
-    return fig, parameter, table_data
+    return fig, parameter, table_data, fig_avg
 
 
 if __name__ == '__main__':
