@@ -251,18 +251,11 @@ def update_output(parameter, sensor_tag, n_intervals,date,n_clicks,sample_interv
     ## Time interval to rectified with this range or add it as another option?
     start_time_w = str(date) + " 8:00:00"
     end_time_w = str(date) + " 16:00:00"
-    dfw = get_and_condition_data('avg.csv')
     table_data = []
 
-    for key, grp in dfw.groupby([sensor_tag]):
-
-        fig_avg.add_scatter(
-            x= grp['Time'], 
-            y=grp[parameter], 
-            name=key, 
-            mode='lines + markers',
-            connectgaps=True)
-
+    ## Table
+    df = df[(df['Time'] > start_time_w) & (df['Time'] < end_time_w)]
+    for key, grp in df.groupby([sensor_tag]):
         if(math.isnan(grp[parameter].mean())):
             continue
         table_data.append({
@@ -272,6 +265,26 @@ def update_output(parameter, sensor_tag, n_intervals,date,n_clicks,sample_interv
             "rms": "{:.2f}".format(rms(grp[parameter]))
         })
 
+    ## Average plot
+    dfw = get_and_condition_data('avg.csv')
+    for key, grp in dfw.groupby([sensor_tag]):
+        fig_avg.add_scatter(
+            x= grp['Time'], 
+            y=grp[parameter], 
+            name=key, 
+            mode='lines + markers',
+            connectgaps=True)
+    
+    fig_avg.update_layout(
+    title={
+        'text': "Average",
+        'y':0.9,
+        'x':0.5,
+        'xanchor': 'center',
+        'yanchor': 'top'})
+
+
+    ## Peak plot
     dfw = get_and_condition_data('peak.csv')
     for key, grp in dfw.groupby([sensor_tag]):
 
@@ -282,6 +295,16 @@ def update_output(parameter, sensor_tag, n_intervals,date,n_clicks,sample_interv
             mode='lines + markers',
             connectgaps=True)
     
+
+    fig_peak.update_layout(
+    title={
+        'text': "Peak",
+        'y':0.9,
+        'x':0.5,
+        'xanchor': 'center',
+        'yanchor': 'top'})
+
+    ## RMS plot
     dfw = get_and_condition_data('rms.csv')
     for key, grp in dfw.groupby([sensor_tag]):
 
@@ -291,6 +314,14 @@ def update_output(parameter, sensor_tag, n_intervals,date,n_clicks,sample_interv
             name=key, 
             mode='lines + markers',
             connectgaps=True)
+
+    fig_rms.update_layout(
+    title={
+        'text': "RMS",
+        'y':0.9,
+        'x':0.5,
+        'xanchor': 'center',
+        'yanchor': 'top'})
 
     units = {'Temperature':'C', 'Relative humidity':'%', 'Dew point':'C', 'CO2 level': 'ppm'}
     fig.layout = {
