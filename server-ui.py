@@ -186,6 +186,10 @@ app.layout = html.Div(children=[
     [State('my-date-picker-single', 'date')]
     )
 def change(interval, date):
+    if(dt.now().hour >=8 and dt.now().hour <=16):
+        calc_avg()
+        calc_peak()
+        calc_rms()
     if(dt.now().hour == 0):
         return datetime.date.today(), datetime.date.today()
     else:
@@ -333,6 +337,99 @@ def update_output(parameter, sensor_tag, n_intervals,date,n_clicks,sample_interv
 
     return fig, parameter, table_data, fig_avg, fig_peak, fig_rms
 
+def calc_avg():
+    start = dt(2020, 7, 21).date()
+    end = dt.today().date()
+    csv_file = 'avg.csv'
+
+    with open(csv_file, 'w') as f:
+        f.write('ip,name,Time,Temperature,Relative humidity,Dew point,CO2 level\n')
+
+        while start <= end:
+            day = datetime.timedelta(days=1)
+            date_string = start.strftime("%Y%m%d")
+            data_source =  '/opt/sensor_data/dash/' + date_string +'_sensors.csv'
+
+            start_time_w = str(start) + " 8:00:00"
+            end_time_w = str(start) + " 16:00:00"
+            
+            df = get_and_condition_data(data_source)
+            df = df[(df['Time'] > start_time_w) & (df['Time'] < end_time_w)]
+        
+            for key, grp in df.groupby(['name']):
+                f.write("%s,%s,%s,%s,%s,%s,%s\n" 
+                        %(grp['ip'].max(),
+                        key,
+                        start,
+                        "{:.2f}".format(grp['Temperature'].mean()),
+                        "{:.2f}".format(grp['Relative humidity'].mean()),
+                        "{:.2f}".format(grp['Dew point'].mean()),
+                        "{:.2f}".format(grp['CO2 level'].mean())))
+            
+            start += day
+
+def calc_peak():
+    start = dt(2020, 7, 21).date()
+    end = dt.today().date()
+    csv_file = 'peak.csv'
+    print("heelo peak\n")
+
+    with open(csv_file, 'w') as f:
+        f.write('ip,name,Time,Temperature,Relative humidity,Dew point,CO2 level\n')
+
+        while start <= end:
+            day = datetime.timedelta(days=1)
+            date_string = start.strftime("%Y%m%d")
+            data_source =  '/opt/sensor_data/dash/' + date_string +'_sensors.csv'
+
+            start_time_w = str(start) + " 8:00:00"
+            end_time_w = str(start) + " 16:00:00"
+
+            df = get_and_condition_data(data_source)
+            df = df[(df['Time'] > start_time_w) & (df['Time'] < end_time_w)]
+        
+            for key, grp in df.groupby(['name']):
+                f.write("%s,%s,%s,%s,%s,%s,%s\n" 
+                        %(grp['ip'].max(),
+                        key,
+                        start,
+                        "{:.2f}".format(grp['Temperature'].max()),
+                        "{:.2f}".format(grp['Relative humidity'].max()),
+                        "{:.2f}".format(grp['Dew point'].max()),
+                        "{:.2f}".format(grp['CO2 level'].max())))
+            
+            start += day
+
+def calc_rms():
+    start = dt(2020, 7, 21).date()
+    end = dt.today().date()
+    csv_file = 'rms.csv'
+    
+    with open(csv_file, 'w') as f:
+        f.write('ip,name,Time,Temperature,Relative humidity,Dew point,CO2 level\n')
+        day = datetime.timedelta(days=1)
+
+        while start <= end:
+            date_string = start.strftime("%Y%m%d")
+            data_source =  '/opt/sensor_data/dash/' + date_string +'_sensors.csv'
+
+            start_time_w = str(start) + " 8:00:00"
+            end_time_w = str(start) + " 16:00:00"
+
+            df = get_and_condition_data(data_source)
+            df = df[(df['Time'] > start_time_w) & (df['Time'] < end_time_w)]
+        
+            for key, grp in df.groupby(['name']):
+                f.write("%s,%s,%s,%s,%s,%s,%s\n" 
+                        %(grp['ip'].max(),
+                        key,
+                        start,
+                        "{:.2f}".format(rms(grp['Temperature'])),
+                        "{:.2f}".format(rms(grp['Relative humidity'])),
+                        "{:.2f}".format(rms(grp['Dew point'])),
+                        "{:.2f}".format(rms(grp['CO2 level']))))
+            
+            start += day
 
 if __name__ == '__main__':
     app.run_server(debug=True, host='0.0.0.0')
