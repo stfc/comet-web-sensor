@@ -141,6 +141,12 @@ app.layout = html.Div(children=[
     dcc.Graph(
             id='average-plot',
             ),
+    dcc.Graph(
+            id='peak-plot',
+            ),
+    dcc.Graph(
+            id='rms-plot',
+            ),
 
     dash_table.DataTable(
     id='table',
@@ -205,7 +211,9 @@ rms = lambda d: np.sqrt ((d ** 2) .sum ()/len(d))
     [Output('data-plot', 'figure'),
     Output('plot-title', 'children'),
     Output('table', 'data'),
-    Output('average-plot', 'figure')],
+    Output('average-plot', 'figure'),
+    Output('peak-plot', 'figure'),
+    Output('rms-plot', 'figure')],
     [Input('parameter-picker', 'value'), 
     Input('legend-display-picker', 'value'),
     Input('interval-component', 'n_intervals'),
@@ -223,6 +231,8 @@ def update_output(parameter, sensor_tag, n_intervals,date,n_clicks,sample_interv
     df = get_and_condition_data(data_source)
     fig = go.Figure()
     fig_avg = go.Figure()
+    fig_peak = go.Figure()
+    fig_rms = go.Figure()
     start_time = str(date) + " " + data_interval +":00:00"
     end_time = str(date) + " " + ("17" if int(data_interval) else "23" ) +":59:59"
     df = df[(df['Time'] > start_time) & (df['Time'] < end_time)]
@@ -241,7 +251,7 @@ def update_output(parameter, sensor_tag, n_intervals,date,n_clicks,sample_interv
     ## Time interval to rectified with this range or add it as another option?
     start_time_w = str(date) + " 8:00:00"
     end_time_w = str(date) + " 16:00:00"
-    dfw = get_and_condition_data('sum.csv')
+    dfw = get_and_condition_data('avg.csv')
     table_data = []
 
     for key, grp in dfw.groupby([sensor_tag]):
@@ -262,6 +272,26 @@ def update_output(parameter, sensor_tag, n_intervals,date,n_clicks,sample_interv
             "rms": "{:.2f}".format(rms(grp[parameter]))
         })
 
+    dfw = get_and_condition_data('peak.csv')
+    for key, grp in dfw.groupby([sensor_tag]):
+
+        fig_peak.add_scatter(
+            x= grp['Time'], 
+            y=grp[parameter], 
+            name=key, 
+            mode='lines + markers',
+            connectgaps=True)
+    
+    dfw = get_and_condition_data('rms.csv')
+    for key, grp in dfw.groupby([sensor_tag]):
+
+        fig_rms.add_scatter(
+            x= grp['Time'], 
+            y=grp[parameter], 
+            name=key, 
+            mode='lines + markers',
+            connectgaps=True)
+
     units = {'Temperature':'C', 'Relative humidity':'%', 'Dew point':'C', 'CO2 level': 'ppm'}
     fig.layout = {
         "yaxis": {
@@ -270,7 +300,7 @@ def update_output(parameter, sensor_tag, n_intervals,date,n_clicks,sample_interv
             "uirevision":date
         }
 
-    return fig, parameter, table_data, fig_avg
+    return fig, parameter, table_data, fig_avg, fig_peak, fig_rms
 
 
 if __name__ == '__main__':
