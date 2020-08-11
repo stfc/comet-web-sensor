@@ -24,14 +24,16 @@ app = dash.Dash(__name__, server = server,
 plot_refresh_time = 20*60 #seconds
 
 def get_and_condition_data(source):
-    df = pd.read_csv(source)
-    df = df.replace('connection',np.nan)
-    df = df.replace('-',np.nan)
-    df = df.astype({'Temperature':'float',
-                    'Relative humidity':'float', 
-                    'Dew point':'float', 
-                    'CO2 level': 'float', 
-                    'Time':'datetime64[ns]'})
+    df = pd.read_csv(source, 
+                    dtype = {'Temperature':'float',
+                        'Relative humidity':'float', 
+                        'Dew point':'float', 
+                        'CO2 level': 'float'},
+                    na_values=['connection', '-'],
+                    parse_dates=['Time'],
+                    infer_datetime_format=True,
+                    cache_dates=True
+    )
     return df
 
 
