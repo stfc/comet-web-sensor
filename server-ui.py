@@ -22,6 +22,9 @@ app = dash.Dash(__name__, server = server,
                 'https://codepen.io/chriddyp/pen/bWLwgP.css'])
 
 plot_refresh_time = 20*60 #seconds
+image_filename = 'CLFlogo.png'
+encoded_image = base64.b64encode(open(image_filename, 'rb').read())
+
 
 def get_and_condition_data(source):
     df = pd.read_csv(source, 
@@ -36,9 +39,6 @@ def get_and_condition_data(source):
     )
     return df
 
-
-image_filename = 'CLFlogo.png'
-encoded_image = base64.b64encode(open(image_filename, 'rb').read())
 
 app.layout = html.Div(children=[
 
@@ -65,8 +65,8 @@ app.layout = html.Div(children=[
                             'height': '50%'
                             }
                     )],
-            width="auto"
-            ),
+                    width="auto"
+            ),          
             dbc.Col(children=[html.P('Legend value',style={'font-size':'16px','font-weight': 'bold',"color": "#7c795d"}),
                     dcc.Dropdown(
                         id='legend-display-picker',
@@ -135,6 +135,7 @@ app.layout = html.Div(children=[
         style = {'padding-left': '100px',
                    'padding-top': '50px'}
     ),
+
     dcc.Graph(
             id='data-plot',
             style= {
@@ -187,7 +188,7 @@ app.layout = html.Div(children=[
     [Input('interval-component', 'n_intervals')],
     [State('my-date-picker-single', 'date')]
     )
-def change(interval, date):
+def calculate_averages(interval, date):
     if(dt.now().hour >=8 and dt.now().hour <=16):
         calc_avg()
         calc_peak()
@@ -196,6 +197,7 @@ def change(interval, date):
         return datetime.date.today(), datetime.date.today()
     else:
         return datetime.date.today(), date
+
 
 @app.callback(
     Output("download", "data"),
