@@ -42,10 +42,12 @@ app.layout = html.Div(children=[
 
     dbc.Row([
         dbc.Col(children= html.Img(src='data:image/png;base64,{}'.format(encoded_image.decode())),width='10%'),
+        dbc.Col(children= html.H1("THIS IS DEVELOPMENT BRANCH IT CAN BE SWITCHED OFF ANYTIME",
+                style={"text-align": "left","font-family": "Trocchi","color": "red","width": "50%",'font-size':'20px'})),
         dbc.Col(children= html.H1(id='plot-title',
-                style={"text-align": "center","font-family": "Trocchi","color": "#7c795d","width": "90%"}))
-        ]),
-    
+                style={"font-family": "Trocchi","color": "#7c795d","width": "60%","margin-left":"-20%"}))
+        ]), 
+
     dbc.Row(
         [
             dbc.Col(children=[html.P('Data type',style={'font-size':'16px','font-weight': 'bold',"color": "#7c795d"}),
@@ -432,4 +434,4 @@ def calc_rms():
             start += day
 
 if __name__ == '__main__':
-    app.run_server(debug=True, host='0.0.0.0')
+    app.run_server(port=8051,debug=True, host='0.0.0.0')
