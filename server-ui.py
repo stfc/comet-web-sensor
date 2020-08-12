@@ -120,7 +120,7 @@ app.layout = html.Div(children=[
             ),
             dbc.Col(children=[html.P('Date',style={'font-size':'16px','font-weight': 'bold',"color": "#7c795d"}),
                     dcc.DatePickerSingle(
-                    id='my-date-picker-single',
+                    id='date-picker',
                     min_date_allowed=dt(2020, 7, 20),
                     max_date_allowed=datetime.date.today(),
                     date=datetime.date.today()
@@ -184,11 +184,12 @@ app.layout = html.Div(children=[
     style={"padding": "20px"}
 )
 
+
 @app.callback(
-    [Output('my-date-picker-single', 'max_date_allowed'),
-    Output('my-date-picker-single', 'date')],
+    [Output('date-picker', 'max_date_allowed'),
+    Output('date-picker', 'date')],
     [Input('interval-component', 'n_intervals')],
-    [State('my-date-picker-single', 'date')]
+    [State('date-picker', 'date')]
     )
 def calculate_averages(interval, date):
     if(dt.now().hour >=8 and dt.now().hour <=16):
@@ -204,7 +205,7 @@ def calculate_averages(interval, date):
 @app.callback(
     Output("download", "data"),
     [Input("export_btn", "n_clicks")],
-    [State('my-date-picker-single', 'date')]
+    [State('date-picker', 'date')]
     )
 def export_csv(n_nlicks,date):
     if(n_nlicks>0):
@@ -227,7 +228,7 @@ rms = lambda d: np.sqrt ((d ** 2) .sum ()/len(d))
     [Input('parameter-picker', 'value'), 
     Input('legend-display-picker', 'value'),
     Input('interval-component', 'n_intervals'),
-    Input('my-date-picker-single', 'date'),
+    Input('date-picker', 'date'),
     Input('refresh-btn', 'n_clicks'),
     Input('sample-time-interval', 'value'),
     Input('data-time-interval', 'value')]
@@ -342,6 +343,19 @@ def update_output(parameter, sensor_tag, n_intervals,date,n_clicks,sample_interv
         }
 
     return fig, parameter, table_data, fig_avg, fig_peak, fig_rms
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 def calc_avg():
     start = dt(2020, 7, 21).date()
