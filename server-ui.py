@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-import dash, datetime
+import dash, datetime, os, time
 import dash_core_components as dcc
 import dash_html_components as html
 import pandas as pd
@@ -15,29 +15,29 @@ from dash_extensions.snippets import send_data_frame
 import base64
 import dash_table
 import math
+from configparser import ConfigParser
 
 server = Flask(__name__)
 app = dash.Dash(__name__, server = server,
                 external_stylesheets=[dbc.themes.BOOTSTRAP,
                 'https://codepen.io/chriddyp/pen/bWLwgP.css'])
 
-plot_refresh_time = 20*60 #seconds
 image_filename = 'CLFlogo.png'
 encoded_image = base64.b64encode(open(image_filename, 'rb').read())
 
+cp = ConfigParser()
+cp.read('config.ini')
+plot_refresh_time = cp.getfloat('settings', 'plot refresh interval')
+data_file_location = cp.get('settings', 'data file location')
+work_day_start = cp.get('settings', 'work_day_start')
+work_day_end = cp.get('settings', 'work_day_end')
 
-def get_and_condition_data(source):
-    df = pd.read_csv(source, 
-                    dtype = {'Temperature':'float',
-                        'Relative humidity':'float', 
-                        'Dew point':'float', 
-                        'CO2 level': 'float'},
-                    na_values=['connection', '-'],
-                    parse_dates=['Time'],
-                    infer_datetime_format=True,
-                    cache_dates=True
-    )
-    return df
+rms = lambda d: np.sqrt(np.mean(np.square(d)))
+stats_file_dict = { 'Temperature':'Temp_stats.csv',
+                    'Relative humidity':'Humidity_stats.csv',
+                    'Dew point':'Dewpoint_stats.csv',
+                    'CO2 level':'CO2_stats.csv'}
+units = {'Temperature':'C', 'Relative humidity':'%', 'Dew point':'C', 'CO2 level': 'ppm'}
 
 
 app.layout = html.Div(children=[
@@ -106,10 +106,10 @@ app.layout = html.Div(children=[
                     dcc.Dropdown(
                         id='data-time-interval',
                         options=[
-                            {'label': '6:00 - 18:00', 'value': '06'},
-                            {'label': '24 hours', 'value': '00'}
+                            {'label': '6:00 - 18:00', 'value': '06:00,18:00'},
+                            {'label': '24 hours', 'value': '00:00,23:59'}
                         ],
-                        value='06',
+                        value='06:00,18:00',
                         style={
                             'width': '150px',
                             'height': '50%',
@@ -144,10 +144,10 @@ app.layout = html.Div(children=[
                 'height': 600
             }),
     dcc.Graph(
-            id='average-plot',
+            id='peak-plot',
             ),
     dcc.Graph(
-            id='peak-plot',
+            id='average-plot',
             ),
     dcc.Graph(
             id='rms-plot',
@@ -186,37 +186,17 @@ app.layout = html.Div(children=[
 
 
 @app.callback(
-    [Output('date-picker', 'max_date_allowed'),
-    Output('date-picker', 'date')],
-    [Input('interval-component', 'n_intervals')],
-    [State('date-picker', 'date')]
-    )
-def calculate_averages(interval, date):
-    if(dt.now().hour >=8 and dt.now().hour <=16):
-        calc_avg()
-        calc_peak()
-        calc_rms()
-    if(dt.now().hour == 0):
-        return datetime.date.today(), datetime.date.today()
-    else:
-        return datetime.date.today(), date
-
-
-@app.callback(
     Output("download", "data"),
     [Input("export_btn", "n_clicks")],
     [State('date-picker', 'date')]
     )
-def export_csv(n_nlicks,date):
-    if(n_nlicks>0):
-        date = dt.strptime(re.split('T| ', date)[0], '%Y-%m-%d')
-        date_string = date.strftime("%Y%m%d")
-        data_source = '/opt/sensor_data/dash/'+ date_string +'_sensors.csv'
+def export_csv(n_clicks,date):
+    if(n_clicks>0):
+        data_source = get_sensor_datafile_name(date)
         df = get_and_condition_data(data_source)
+        out_filename = data_source.split('_')[0] + '_data.csv' 
+        return send_data_frame(df.to_csv, out_filename, index=False)
 
-        return send_data_frame(df.to_csv, date_string+"_data.csv",index=False)
-
-rms = lambda d: np.sqrt ((d ** 2) .sum ()/len(d))
 
 @app.callback(
     [Output('data-plot', 'figure'),
@@ -234,38 +214,87 @@ rms = lambda d: np.sqrt ((d ** 2) .sum ()/len(d))
     Input('data-time-interval', 'value')]
     )
 def update_output(parameter, sensor_tag, n_intervals,date,n_clicks,sample_interval, data_interval):
-    if date is not None:
-        date = dt.strptime(re.split('T| ', date)[0], '%Y-%m-%d')
-        date_string = date.strftime("%Y%m%d")
-        data_source =  '/opt/sensor_data/dash/'+date_string +'_sensors.csv'
 
-    df = get_and_condition_data(data_source)
-    fig = go.Figure()
-    fig_avg = go.Figure()
-    fig_peak = go.Figure()
-    fig_rms = go.Figure()
-    start_time = str(date) + " " + data_interval +":00:00"
-    end_time = str(date) + " " + ("17" if int(data_interval) else "23" ) +":59:59"
-    df = df[(df['Time'] > start_time) & (df['Time'] < end_time)]
-    table_data = []
-    for key, grp in df.groupby([sensor_tag]):
+    fig_main = go.Figure()
+    fig_avg = go.Figure(layout={'title':setup_graph_title('Average')})
+    fig_peak = go.Figure(layout={'title':setup_graph_title('Peak')})
+    fig_rms = go.Figure(layout={'title':setup_graph_title('RMS')})
+
+    try:
+        data_source = get_sensor_datafile_name(date)
+        df = get_and_condition_data(data_source)
+    except FileNotFoundError:
+        # TODO let user know that data for that day doesn't exist.
+        return fig_main, parameter, [], fig_avg, fig_peak, fig_rms
+    
+
+
+    df_time_filt = get_data_in_time_interval(data_interval, df)
+    
+    for key, grp in df_time_filt.groupby([sensor_tag]):
         sample_interval = int(sample_interval)
-
-        fig.add_scatter(
+        fig_main.add_scatter(
             x= grp['Time'][::sample_interval], 
             y=grp[parameter][::sample_interval], 
             name=key, 
             mode='lines + markers',
             connectgaps=True)
 
-    ## Filter according to working hours (8:00-16:00)
-    ## Time interval to rectified with this range or add it as another option?
-    start_time_w = str(date) + " 8:00:00"
-    end_time_w = str(date) + " 16:00:00"
-    table_data = []
+    table_data = build_table(df, sensor_tag, parameter)
 
-    ## Table
-    df = df[(df['Time'] > start_time_w) & (df['Time'] < end_time_w)]
+    stats_file = stats_file_dict[parameter]
+    df_stats = get_and_condition_stats(stats_file)
+
+    for key, grp in df_stats.groupby([sensor_tag]):
+        fig_avg.add_scatter(
+            x= grp['date'], 
+            y=grp['mean'], 
+            name=key, 
+            mode='lines + markers',
+            connectgaps=True)
+
+        fig_peak.add_scatter(
+            x= grp['date'], 
+            y=grp['peak'], 
+            name=key, 
+            mode='lines + markers',
+            connectgaps=True)
+
+        fig_rms.add_scatter(
+            x= grp['date'], 
+            y=grp['rms'], 
+            name=key, 
+            mode='lines + markers',
+            connectgaps=True)        
+
+    for f in [fig_avg, fig_main, fig_peak, fig_rms]:
+        f.layout = {
+            "yaxis": {
+                "title": {"text":units[parameter]}
+                },
+                "uirevision":date
+            }
+
+    return fig_main, parameter, table_data, fig_avg, fig_peak, fig_rms
+
+
+def setup_graph_title(title_string):
+        return {'text': title_string,
+                'y':0.9,
+                'x':0.5,
+                'xanchor': 'center',
+                'yanchor': 'top'}
+
+def get_data_in_time_interval(data_interval, df):
+    start_time, end_time = data_interval.split(',') 
+    df = df.set_index('Time').between_time(start_time, end_time).reset_index()
+    return df
+
+
+def build_table(df, sensor_tag, parameter):
+    df = df.set_index('Time')
+    df = df.between_time(work_day_start, work_day_end)
+    table_data = []
     for key, grp in df.groupby([sensor_tag]):
         if(math.isnan(grp[parameter].mean())):
             continue
@@ -275,181 +304,41 @@ def update_output(parameter, sensor_tag, n_intervals,date,n_clicks,sample_interv
             "peak": grp[parameter].max(),
             "rms": "{:.2f}".format(rms(grp[parameter]))
         })
+    return table_data
 
-    ## Average plot
-    dfw = get_and_condition_data('avg.csv')
-    for key, grp in dfw.groupby([sensor_tag]):
-        fig_avg.add_scatter(
-            x= grp['Time'], 
-            y=grp[parameter], 
-            name=key, 
-            mode='lines + markers',
-            connectgaps=True)
+
+def get_and_condition_data(source):
+    df = pd.read_csv(source, 
+                    dtype = {'Temperature':'float',
+                        'Relative humidity':'float', 
+                        'Dew point':'float', 
+                        'CO2 level': 'float'},
+                    na_values=['connection', '-'],
+                    parse_dates=['Time'],
+                    infer_datetime_format=True,
+                    cache_dates=True
+    )
+    return df
+
+
+def get_and_condition_stats(source):
+    filename = data_file_location + os.sep + source
+    df = pd.read_csv(filename,
+                    dtype = {'peak':'float',
+                        'mean':'float', 
+                        'rms':'float'}, 
+                    parse_dates=['date'],
+                    infer_datetime_format=True,
+                    cache_dates=True
+    )
+    return df
     
-    fig_avg.update_layout(
-    title={
-        'text': "Average",
-        'y':0.9,
-        'x':0.5,
-        'xanchor': 'center',
-        'yanchor': 'top'})
-
-
-    ## Peak plot
-    dfw = get_and_condition_data('peak.csv')
-    for key, grp in dfw.groupby([sensor_tag]):
-
-        fig_peak.add_scatter(
-            x= grp['Time'], 
-            y=grp[parameter], 
-            name=key, 
-            mode='lines + markers',
-            connectgaps=True)
     
+def get_sensor_datafile_name(date):
+    date = dt.strptime(re.split('T| ', date)[0], '%Y-%m-%d')
+    date_string = date.strftime("%Y%m%d")
+    return data_file_location + os.sep + date_string + '_sensors.csv'
 
-    fig_peak.update_layout(
-    title={
-        'text': "Peak",
-        'y':0.9,
-        'x':0.5,
-        'xanchor': 'center',
-        'yanchor': 'top'})
-
-    ## RMS plot
-    dfw = get_and_condition_data('rms.csv')
-    for key, grp in dfw.groupby([sensor_tag]):
-
-        fig_rms.add_scatter(
-            x= grp['Time'], 
-            y=grp[parameter], 
-            name=key, 
-            mode='lines + markers',
-            connectgaps=True)
-
-    fig_rms.update_layout(
-    title={
-        'text': "RMS",
-        'y':0.9,
-        'x':0.5,
-        'xanchor': 'center',
-        'yanchor': 'top'})
-
-    units = {'Temperature':'C', 'Relative humidity':'%', 'Dew point':'C', 'CO2 level': 'ppm'}
-    fig.layout = {
-        "yaxis": {
-            "title": {"text":units[parameter]}
-            },
-            "uirevision":date
-        }
-
-    return fig, parameter, table_data, fig_avg, fig_peak, fig_rms
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-def calc_avg():
-    start = dt(2020, 7, 21).date()
-    end = dt.today().date()
-    csv_file = 'avg.csv'
-
-    with open(csv_file, 'w') as f:
-        f.write('ip,name,Time,Temperature,Relative humidity,Dew point,CO2 level\n')
-
-        while start <= end:
-            day = datetime.timedelta(days=1)
-            date_string = start.strftime("%Y%m%d")
-            data_source =  '/opt/sensor_data/dash/' + date_string +'_sensors.csv'
-
-            start_time_w = str(start) + " 8:00:00"
-            end_time_w = str(start) + " 16:00:00"
-            
-            df = get_and_condition_data(data_source)
-            df = df[(df['Time'] > start_time_w) & (df['Time'] < end_time_w)]
-        
-            for key, grp in df.groupby(['name']):
-                f.write("%s,%s,%s,%s,%s,%s,%s\n" 
-                        %(grp['ip'].max(),
-                        key,
-                        start,
-                        "{:.2f}".format(grp['Temperature'].mean()),
-                        "{:.2f}".format(grp['Relative humidity'].mean()),
-                        "{:.2f}".format(grp['Dew point'].mean()),
-                        "{:.2f}".format(grp['CO2 level'].mean())))
-            
-            start += day
-
-def calc_peak():
-    start = dt(2020, 7, 21).date()
-    end = dt.today().date()
-    csv_file = 'peak.csv'
-    print("heelo peak\n")
-
-    with open(csv_file, 'w') as f:
-        f.write('ip,name,Time,Temperature,Relative humidity,Dew point,CO2 level\n')
-
-        while start <= end:
-            day = datetime.timedelta(days=1)
-            date_string = start.strftime("%Y%m%d")
-            data_source =  '/opt/sensor_data/dash/' + date_string +'_sensors.csv'
-
-            start_time_w = str(start) + " 8:00:00"
-            end_time_w = str(start) + " 16:00:00"
-
-            df = get_and_condition_data(data_source)
-            df = df[(df['Time'] > start_time_w) & (df['Time'] < end_time_w)]
-        
-            for key, grp in df.groupby(['name']):
-                f.write("%s,%s,%s,%s,%s,%s,%s\n" 
-                        %(grp['ip'].max(),
-                        key,
-                        start,
-                        "{:.2f}".format(grp['Temperature'].max()),
-                        "{:.2f}".format(grp['Relative humidity'].max()),
-                        "{:.2f}".format(grp['Dew point'].max()),
-                        "{:.2f}".format(grp['CO2 level'].max())))
-            
-            start += day
-
-def calc_rms():
-    start = dt(2020, 7, 21).date()
-    end = dt.today().date()
-    csv_file = 'rms.csv'
-    
-    with open(csv_file, 'w') as f:
-        f.write('ip,name,Time,Temperature,Relative humidity,Dew point,CO2 level\n')
-        day = datetime.timedelta(days=1)
-
-        while start <= end:
-            date_string = start.strftime("%Y%m%d")
-            data_source =  '/opt/sensor_data/dash/' + date_string +'_sensors.csv'
-
-            start_time_w = str(start) + " 8:00:00"
-            end_time_w = str(start) + " 16:00:00"
-
-            df = get_and_condition_data(data_source)
-            df = df[(df['Time'] > start_time_w) & (df['Time'] < end_time_w)]
-        
-            for key, grp in df.groupby(['name']):
-                f.write("%s,%s,%s,%s,%s,%s,%s\n" 
-                        %(grp['ip'].max(),
-                        key,
-                        start,
-                        "{:.2f}".format(rms(grp['Temperature'])),
-                        "{:.2f}".format(rms(grp['Relative humidity'])),
-                        "{:.2f}".format(rms(grp['Dew point'])),
-                        "{:.2f}".format(rms(grp['CO2 level']))))
-            
-            start += day
 
 if __name__ == '__main__':
     app.run_server(port=8051,debug=True, host='0.0.0.0')
