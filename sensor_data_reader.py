@@ -14,7 +14,7 @@ class SensorDataReader():
         cp = ConfigParser()
         cp.read(config_file)
         self._sensors_details = [{'ip':i[0], 'name':i[1]} for i in cp['sensors'].items()]
-        self._sample_interval = cp.getfloat('settings', 'interval in seconds')
+        self._sample_interval = cp.getfloat('settings', 'sensor read interval')
         self._data_file_location = cp.get('settings', 'data file location')
 
 
