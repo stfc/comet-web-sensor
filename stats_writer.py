@@ -26,7 +26,7 @@ class StatsWriter():
 
 
     def _get_available_files(self):
-        return glob.glob(self._data_file_location + '/*_sensors.csv')
+        return sorted(glob.glob(self._data_file_location + '/*_sensors.csv'))
 
 
     def _calc_stats(self, column, dataframe):
