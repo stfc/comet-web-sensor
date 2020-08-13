@@ -4,6 +4,7 @@ import dash_core_components as dcc
 import dash_html_components as html
 import pandas as pd
 import plotly.graph_objs as go 
+import plotly.express as px
 from flask import Flask
 import numpy as np
 from dash.dependencies import Input, Output, State
@@ -17,6 +18,7 @@ import base64
 import dash_table
 import math
 from configparser import ConfigParser
+
 
 server = Flask(__name__)
 app = dash.Dash(__name__, server = server,
@@ -222,8 +224,6 @@ def update_output(parameter, sensor_tag, n_intervals,date,n_clicks,sample_interv
         # TODO let user know that data for that day doesn't exist.
         return fig_main, parameter, [], fig_stats
     
-
-
     df_time_filt = get_data_in_time_interval(data_interval, df)
     
     for key, grp in df_time_filt.groupby([sensor_tag]):
@@ -240,35 +240,25 @@ def update_output(parameter, sensor_tag, n_intervals,date,n_clicks,sample_interv
     stats_file = stats_file_dict[parameter]
     df_stats = get_and_condition_stats(stats_file)
 
+    colour_index = 0
+    colour_map = px.colors.qualitative.Light24
     for key, grp in df_stats.groupby([sensor_tag]):
-        fig_stats.add_scatter(
-            x=grp['date'], 
-            y=grp['peak'], 
-            name=key, 
-            mode='lines + markers',
-            connectgaps=True,
-            legendgroup=key,
+        
+        colour = colour_map[colour_index]
+
+        fig_stats.add_trace(
+            make_scatter(grp['date'], grp['peak'], key, colour, True),
             row=1, col=1 )
 
-        fig_stats.add_scatter(
-            x=grp['date'], 
-            y=grp['rms'], 
-            name=key, 
-            mode='lines + markers',
-            connectgaps=True,
-            legendgroup=key,
-            showlegend=False,
+        fig_stats.add_trace(
+            make_scatter(grp['date'], grp['rms'], key, colour, False),
             row=2, col=1 )
 
-        fig_stats.add_scatter(
-            x=grp['date'], 
-            y=grp['mean'], 
-            name=key, 
-            mode='lines + markers',
-            connectgaps=True,
-            legendgroup=key,
-            showlegend=False,
-            row=3, col=1 )       
+        fig_stats.add_trace(
+            make_scatter(grp['date'], grp['mean'], key, colour, False),
+            row=3, col=1 )  
+
+        colour_index = (colour_index+1)%len(colour_map)     
 
     for f in [fig_main, fig_stats]:
         f.update_layout({
@@ -281,12 +271,23 @@ def update_output(parameter, sensor_tag, n_intervals,date,n_clicks,sample_interv
     return fig_main, parameter, table_data, fig_stats
 
 
+def make_scatter(x_vals, y_vals, key, colour, leg):
+            return go.Scatter(
+            x=x_vals, y=y_vals, name=key,  
+            mode='lines + markers',
+            marker=dict(color=colour),
+            connectgaps=True,
+            legendgroup=key,
+            showlegend=leg)
+
+
 def setup_graph_title(title_string):
         return {'text': title_string,
                 'y':0.9,
                 'x':0.5,
                 'xanchor': 'center',
                 'yanchor': 'top'}
+
 
 def get_data_in_time_interval(data_interval, df):
     start_time, end_time = data_interval.split(',') 
