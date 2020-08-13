@@ -12,6 +12,7 @@ import dash_bootstrap_components as dbc
 import re
 from dash_extensions import Download
 from dash_extensions.snippets import send_data_frame
+from plotly.subplots import make_subplots
 import base64
 import dash_table
 import math
@@ -144,14 +145,12 @@ app.layout = html.Div(children=[
                 'height': 600
             }),
     dcc.Graph(
-            id='peak-plot',
+            id='stats-plot',
+            style= {
+                'height': 900
+            }
             ),
-    dcc.Graph(
-            id='average-plot',
-            ),
-    dcc.Graph(
-            id='rms-plot',
-            ),
+
 
     dash_table.DataTable(
     id='table',
@@ -202,30 +201,26 @@ def export_csv(n_clicks,date):
     [Output('data-plot', 'figure'),
     Output('plot-title', 'children'),
     Output('table', 'data'),
-    Output('average-plot', 'figure'),
-    Output('peak-plot', 'figure'),
-    Output('rms-plot', 'figure')],
+    Output('stats-plot', 'figure')],
     [Input('parameter-picker', 'value'), 
     Input('legend-display-picker', 'value'),
     Input('interval-component', 'n_intervals'),
     Input('date-picker', 'date'),
     Input('refresh-btn', 'n_clicks'),
     Input('sample-time-interval', 'value'),
-    Input('data-time-interval', 'value')]
-    )
+    Input('data-time-interval', 'value')])
 def update_output(parameter, sensor_tag, n_intervals,date,n_clicks,sample_interval, data_interval):
 
     fig_main = go.Figure()
-    fig_avg = go.Figure(layout={'title':setup_graph_title('Average')})
-    fig_peak = go.Figure(layout={'title':setup_graph_title('Peak')})
-    fig_rms = go.Figure(layout={'title':setup_graph_title('RMS')})
+    fig_stats = make_subplots(rows=3, cols=1, shared_xaxes=True, subplot_titles=["Peak", "RMS", "Mean"],
+                                vertical_spacing=0.05)
 
     try:
         data_source = get_sensor_datafile_name(date)
         df = get_and_condition_data(data_source)
     except FileNotFoundError:
         # TODO let user know that data for that day doesn't exist.
-        return fig_main, parameter, [], fig_avg, fig_peak, fig_rms
+        return fig_main, parameter, [], fig_stats
     
 
 
@@ -246,36 +241,44 @@ def update_output(parameter, sensor_tag, n_intervals,date,n_clicks,sample_interv
     df_stats = get_and_condition_stats(stats_file)
 
     for key, grp in df_stats.groupby([sensor_tag]):
-        fig_avg.add_scatter(
-            x= grp['date'], 
-            y=grp['mean'], 
-            name=key, 
-            mode='lines + markers',
-            connectgaps=True)
-
-        fig_peak.add_scatter(
-            x= grp['date'], 
+        fig_stats.add_scatter(
+            x=grp['date'], 
             y=grp['peak'], 
             name=key, 
             mode='lines + markers',
-            connectgaps=True)
+            connectgaps=True,
+            legendgroup=key,
+            row=1, col=1 )
 
-        fig_rms.add_scatter(
-            x= grp['date'], 
+        fig_stats.add_scatter(
+            x=grp['date'], 
             y=grp['rms'], 
             name=key, 
             mode='lines + markers',
-            connectgaps=True)        
+            connectgaps=True,
+            legendgroup=key,
+            showlegend=False,
+            row=2, col=1 )
 
-    for f in [fig_avg, fig_main, fig_peak, fig_rms]:
-        f.layout = {
+        fig_stats.add_scatter(
+            x=grp['date'], 
+            y=grp['mean'], 
+            name=key, 
+            mode='lines + markers',
+            connectgaps=True,
+            legendgroup=key,
+            showlegend=False,
+            row=3, col=1 )       
+
+    for f in [fig_main, fig_stats]:
+        f.update_layout({
             "yaxis": {
                 "title": {"text":units[parameter]}
                 },
                 "uirevision":date
-            }
+            })
 
-    return fig_main, parameter, table_data, fig_avg, fig_peak, fig_rms
+    return fig_main, parameter, table_data, fig_stats
 
 
 def setup_graph_title(title_string):
