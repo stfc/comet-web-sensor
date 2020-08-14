@@ -278,6 +278,14 @@ app.layout = html.Div(
 
 
 @app.callback(
+    Output("date-picker", "max_date_allowed"),
+    [Input("interval-component", "n_intervals")],
+)
+def update_max_date(n_invervals):
+    return datetime.date.today()
+
+
+@app.callback(
     Output("download", "data"),
     [Input("export_btn", "n_clicks")],
     [State("date-picker", "date")],
