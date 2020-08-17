@@ -284,6 +284,16 @@ app.layout = html.Div(
 def update_max_date(n_invervals):
     return datetime.date.today()
 
+@app.callback(
+Output("date-picker", "date"),
+[Input("interval-component", "n_intervals")]
+)
+def update_current_date(n_intervals):
+    print(n_intervals)
+    if n_intervals == 0:
+        return datetime.date.today()
+    else: 
+        return no_update
 
 @app.callback(
     Output("download", "data"),
@@ -339,7 +349,7 @@ def update_output(
 
     for key, grp in df_time_filt.groupby([sensor_tag]):
         sample_interval = int(sample_interval)
-        fig_main.add_scatter(
+        fig_main.add_scattergl(
             x=grp["Time"][::sample_interval],
             y=grp[parameter][::sample_interval],
             name=key,
