@@ -293,7 +293,7 @@ def update_current_date(n_intervals):
     if n_intervals == 0:
         return datetime.date.today()
     else: 
-        return no_update
+        return dash.no_update
 
 @app.callback(
     Output("download", "data"),
