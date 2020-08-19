@@ -40,7 +40,6 @@ data_file_location = cp.get("settings", "data file location")
 work_day_start = cp.get("settings", "work_day_start")
 work_day_end = cp.get("settings", "work_day_end")
 
-rms = lambda d: np.sqrt(np.mean(np.square(d)))
 stats_file_dict = {
     "Temperature": "Temp_stats.csv",
     "Relative humidity": "Humidity_stats.csv",
@@ -252,9 +251,9 @@ app.layout = html.Div(
             id="table",
             columns=[
                 {"id": "name", "name": "Name"},
-                {"id": "avg", "name": "Average"},
                 {"id": "peak", "name": "Peak"},
-                {"id": "rms", "name": "RMS"},
+                {"id": "avg", "name": "Average"},
+                {"id": "std", "name": "Std"},
             ],
             style_table={"margin-left": "5%", "width": "45%"},
             style_cell={"text-align": "left", "width": "150px"},
@@ -284,16 +283,16 @@ app.layout = html.Div(
 def update_max_date(n_invervals):
     return datetime.date.today()
 
+
 @app.callback(
-Output("date-picker", "date"),
-[Input("interval-component", "n_intervals")]
+    Output("date-picker", "date"), [Input("interval-component", "n_intervals")]
 )
 def update_current_date(n_intervals):
-    print(n_intervals)
     if n_intervals == 0:
         return datetime.date.today()
-    else: 
+    else:
         return dash.no_update
+
 
 @app.callback(
     Output("download", "data"),
@@ -334,7 +333,7 @@ def update_output(
         rows=3,
         cols=1,
         shared_xaxes=True,
-        subplot_titles=["Peak", "RMS", "Mean"],
+        subplot_titles=["Peak", "Mean", "STD"],
         vertical_spacing=0.05,
     )
 
@@ -373,11 +372,11 @@ def update_output(
         )
 
         fig_stats.add_trace(
-            make_scatter(grp["date"], grp["rms"], key, colour, False), row=2, col=1
+            make_scatter(grp["date"], grp["mean"], key, colour, False), row=2, col=1
         )
 
         fig_stats.add_trace(
-            make_scatter(grp["date"], grp["mean"], key, colour, False), row=3, col=1
+            make_scatter(grp["date"], grp["std"], key, colour, False), row=3, col=1
         )
 
         colour_index = (colour_index + 1) % len(colour_map)
@@ -429,9 +428,9 @@ def build_table(df, sensor_tag, parameter):
         table_data.append(
             {
                 "name": key,
-                "avg": "{:.2f}".format(grp[parameter].mean()),
                 "peak": grp[parameter].max(),
-                "rms": "{:.2f}".format(rms(grp[parameter])),
+                "avg": "{:.2f}".format(grp[parameter].mean()),
+                "std": "{:.2f}".format(np.std(grp[parameter])),
             }
         )
     return table_data
@@ -458,7 +457,7 @@ def get_and_condition_stats(source):
     filename = data_file_location + os.sep + source
     df = pd.read_csv(
         filename,
-        dtype={"peak": "float", "mean": "float", "rms": "float"},
+        dtype={"peak": "float", "mean": "float", "std": "float"},
         parse_dates=["date"],
         infer_datetime_format=True,
         cache_dates=True,
@@ -473,5 +472,5 @@ def get_sensor_datafile_name(date):
 
 
 if __name__ == "__main__":
-    app.run_server(port=8051, debug=True, host="0.0.0.0")
+    app.run_server(port=8051, debug=True, host="127.0.0.1")
 

@@ -30,7 +30,7 @@ class StatsWriter:
 
     def _calc_stats(self, column, dataframe):
         stats = dataframe.groupby(["date", "ip", "name"], as_index=False).agg(
-            {column: [np.max, np.mean, lambda d: np.sqrt(np.mean(np.square(d)))]}
+            {column: [np.max, np.mean, np.std]}
         )
         return stats
 
@@ -66,10 +66,12 @@ class StatsWriter:
 
     def _write_dataframe_to_file(self, stats_dataframe, filename):
         outfile = self._data_file_location + os.sep + filename
-        first_line_in_file = "date,ip,name,peak,mean,rms\n"
+        first_line_in_file = "date,ip,name,peak,mean,std\n"
         with open(outfile, "w") as f:
             f.write(first_line_in_file)
-            f.write(stats_dataframe.to_csv(header=False, index=False))
+            f.write(
+                stats_dataframe.to_csv(header=False, index=False, line_terminator="\n")
+            )
 
     def start(self):
         while True:
