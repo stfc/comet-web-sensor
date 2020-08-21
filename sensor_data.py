@@ -12,4 +12,3 @@ if __name__ == "__main__":
 
     reader_thread.start()
     stats_thread.start()
-

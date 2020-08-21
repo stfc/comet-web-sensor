@@ -120,4 +120,4 @@ class Sensor:
             self._read_thread.start()
         else:
             print("Data collection thread already running")
-
+            

@@ -34,6 +34,7 @@ class StatsWriter:
         )
         return stats
 
+
     def _process_stats_for_files(self, measurement):
         column_name = measurement
         filenames = self._get_available_files()
@@ -72,6 +73,7 @@ class StatsWriter:
             f.write(
                 stats_dataframe.to_csv(header=False, index=False, line_terminator="\n")
             )
+
 
     def start(self):
         while True:
