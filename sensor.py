@@ -29,9 +29,6 @@ class Sensor:
         self._data_received = False
         self._read_thread = None
 
-    def _format_timestamp(self, isotime, format="%m/%d/%Y %H:%M:%S"):
-        return datetime.datetime.fromisoformat(isotime).strftime(format)
-
     def _generate_timestamp(self, format="%m/%d/%Y %H:%M:%S"):
         return datetime.datetime.now().strftime(format)
 
@@ -62,7 +59,7 @@ class Sensor:
     def _get_latest_data(self, interval=60):
         while True:
             xml = self._read_xml_from_web()
-            #xml = self._read_xml_from_file()
+            # xml = self._read_xml_from_file()
             if not self._data_received:
                 data = self._sub_data_with_error("connection")
             elif not self._xml_is_valid(xml):
@@ -73,7 +70,7 @@ class Sensor:
                     for child in xml
                     if child.findall("unit")
                 }
-                data["Time"] = self._format_timestamp(xml.findtext("time"))
+                data["Time"] = self._generate_timestamp()
             self._latest_data = data
             time.sleep(interval)
 
@@ -123,8 +120,4 @@ class Sensor:
             self._read_thread.start()
         else:
             print("Data collection thread already running")
-
-
-if __name__ == "__main__":
-    s = Sensor({"ip": "1.2.3.4", "name": "test_sensor"})
-    s.start_data_collection(10)
+            
