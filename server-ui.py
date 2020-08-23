@@ -65,7 +65,7 @@ app.layout = html.Div(
                     width="10%",
                 ),
                 dbc.Col(
-                    children=html.H1(
+                    children=[html.H1(
                         "THIS IS DEVELOPMENT BRANCH IT CAN BE SWITCHED OFF ANYTIME",
                         style={
                             "text-align": "left",
@@ -74,7 +74,16 @@ app.layout = html.Div(
                             "width": "50%",
                             "font-size": "20px",
                         },
-                    )
+                    ),
+                    html.Label(['FOR STABLE VERSION\t', html.A('CLICK HERE', href='http://130.246.71.15:8050')],
+                    style={
+                            "text-align": "left",
+                            "font-family": "Trocchi",
+                            "color": "red",
+                            "width": "50%",
+                            "font-size": "20px",
+                        },),
+                    ]
                 ),
                 dbc.Col(
                     children=html.H1(
@@ -239,26 +248,40 @@ app.layout = html.Div(
                             },
                         ),
                         Download(id="download"),
+                        Download(id="download2"),
                     ],
                     width="auto",
                 ),
             ],
-            style={"padding-left": "100px", "padding-top": "50px"},
-        ),
-        dcc.Graph(id="data-plot", style={"height": 600}),
-        dcc.Graph(id="stats-plot", style={"height": 900}),
-        dash_table.DataTable(
-            id="table",
-            columns=[
-                {"id": "name", "name": "Name"},
-                {"id": "peak", "name": "Peak"},
-                {"id": "avg", "name": "Average"},
-                {"id": "std", "name": "Std"},
-            ],
-            style_table={"margin-left": "5%", "width": "45%"},
-            style_cell={"text-align": "left", "width": "150px"},
-        ),
-        dcc.ConfirmDialogProvider(
+            style={"padding-left": "100px", "padding-top": "50px","margin-bottom":"50px"},
+        ),        
+        dcc.Tabs(
+        children=[
+            dcc.Tab(
+                label='Today',
+                children=[
+                    dcc.Graph(id="data-plot", style={"height": 600}),
+                    dash_table.DataTable(
+                        id="table",
+                        columns=[
+                            {"id": "name", "name": "Name"},
+                            {"id": "peak", "name": "Peak"},
+                            {"id": "avg", "name": "Average"},
+                            {"id": "std", "name": "Std"},
+                        ],
+                        style_table={"margin-left": "5%", "width": "45%"},
+                        style_cell={"text-align": "left", "width": "150px"},
+                    )
+                ]
+            ),
+            dcc.Tab(
+                label='Statistics',
+                children=[
+                    dcc.Graph(id="stats-plot", style={"height": 900}),
+                ]
+            )
+        ]),
+    dcc.ConfirmDialogProvider(
             children=html.Button(
                 "Contact Us",
                 style={"bottom": "5%", "margin-left": "20px", "margin-top": "20px"},
@@ -305,6 +328,18 @@ def export_csv(n_clicks, date):
         df = get_and_condition_data(data_source)
         out_filename = data_source.split("_")[0] + "_data.csv"
         return send_data_frame(df.to_csv, out_filename, index=False)
+
+@app.callback(
+    Output("download2", "data"),
+    [Input("export_btn", "n_clicks")],
+    [State("date-picker", "date"),
+    State("parameter-picker", "value")],
+)
+def export_stats(n_clicks, date, parameter):
+    if n_clicks > 0:
+        stats_file = stats_file_dict[parameter]
+        df_stats = get_and_condition_stats(stats_file)
+        return send_data_frame(df_stats.to_csv, stats_file, index=False)
 
 
 @app.callback(
