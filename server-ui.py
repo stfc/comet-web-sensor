@@ -391,16 +391,28 @@ def update_output(
         return fig_main, parameter, [], fig_stats
 
     df_time_filt = get_data_in_time_interval(data_interval, df)
-
+    
+    count_set = 0
     for key, grp in df_time_filt.groupby([sensor_tag]):
         sample_interval = int(sample_interval)
-        fig_main.add_scattergl(
-            x=grp["Time"][::sample_interval],
-            y=grp[parameter][::sample_interval],
-            name=key,
-            mode="lines + markers",
-            connectgaps=True,
-        )
+        if(count_set < 15):
+            fig_main.add_scattergl(
+                x=grp["Time"][::sample_interval],
+                y=grp[parameter][::sample_interval],
+                name=key,
+                mode="lines + markers",
+                connectgaps=True,
+            )
+        else:
+            fig_main.add_scattergl(
+                x=grp["Time"][::sample_interval],
+                y=grp[parameter][::sample_interval],
+                name=key,
+                mode="lines + markers",
+                connectgaps=True,
+                line=dict(dash='dashdot')
+            )
+        count_set+=1
 
     table_data = build_table(df, sensor_tag, parameter)
 
