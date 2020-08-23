@@ -247,8 +247,19 @@ app.layout = html.Div(
                                 "margin-top": "33px",
                             },
                         ),
+                        html.Button(
+                            "Export Statistics",
+                            id="export_stats-btn",
+                            n_clicks=0,
+                            style={
+                                "padding": "0px",
+                                "margin-left":"10px",
+                                "width": "150px",
+                                "margin-top": "33px",
+                            },
+                        ),
                         Download(id="download"),
-                        Download(id="download2"),
+                        Download(id="download-stats"),
                     ],
                     width="auto",
                 ),
@@ -330,8 +341,8 @@ def export_csv(n_clicks, date):
         return send_data_frame(df.to_csv, out_filename, index=False)
 
 @app.callback(
-    Output("download2", "data"),
-    [Input("export_btn", "n_clicks")],
+    Output("download-stats", "data"),
+    [Input("export_stats-btn", "n_clicks")],
     [State("date-picker", "date"),
     State("parameter-picker", "value")],
 )
