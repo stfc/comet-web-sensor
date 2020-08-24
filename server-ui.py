@@ -394,7 +394,7 @@ def update_output(
 
     df_time_filt = get_data_in_time_interval(data_interval, df)
     
-    line_shape = ["solid","dash","dashdot","longdash","dot"]
+    line_shape = ["solid","dash","dot","dashdot","longdash"]
     count_set = 0
     shape_index = 0
     for key, grp in df_time_filt.groupby([sensor_tag]):
@@ -408,7 +408,7 @@ def update_output(
             line=dict(dash=line_shape[shape_index])
         )
         count_set+=1
-        if(count_set % 15 == 0):
+        if(count_set % len(px.colors.qualitative.Plotly) == 0):
             shape_index = (shape_index + 1) % len(line_shape)
 
     table_data = build_table(df, sensor_tag, parameter)
