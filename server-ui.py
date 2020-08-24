@@ -149,129 +149,118 @@ app.layout = html.Div(
                         ),
                     ],
                     width="auto",
-                ),
-                dbc.Col(
-                    children=[
-                        html.P(
-                            "Sample interval",
-                            style={
-                                "font-size": "16px",
-                                "font-weight": "bold",
-                                "color": "#7c795d",
-                            },
-                        ),
-                        dcc.Dropdown(
-                            id="sample-time-interval",
-                            options=[
-                                {"label": "1 minute", "value": "1"},
-                                {"label": "5 minutes", "value": "5"},
-                                {"label": "10 minutes", "value": "10"},
-                            ],
-                            value="5",
-                            style={
-                                "width": "150px",
-                                "height": "50%",
-                                "mergin-left": "50px",
-                            },
-                        ),
-                    ],
-                    width="auto",
-                ),
-                dbc.Col(
-                    children=[
-                        html.P(
-                            "Time interval",
-                            style={
-                                "font-size": "16px",
-                                "font-weight": "bold",
-                                "color": "#7c795d",
-                            },
-                        ),
-                        dcc.Dropdown(
-                            id="data-time-interval",
-                            options=[
-                                {"label": "6:00 - 18:00", "value": "06:00,18:00"},
-                                {"label": "24 hours", "value": "00:00,23:59"},
-                            ],
-                            value="06:00,18:00",
-                            style={
-                                "width": "150px",
-                                "height": "50%",
-                                "mergin-left": "50px",
-                            },
-                        ),
-                    ],
-                    width="auto",
-                ),
-                dbc.Col(
-                    children=[
-                        html.P(
-                            "Date",
-                            style={
-                                "font-size": "16px",
-                                "font-weight": "bold",
-                                "color": "#7c795d",
-                            },
-                        ),
-                        dcc.DatePickerSingle(
-                            id="date-picker",
-                            min_date_allowed=dt(2020, 7, 20),
-                            max_date_allowed=datetime.date.today(),
-                            date=datetime.date.today(),
-                        ),
-                    ],
-                    width="auto",
-                ),
-                dbc.Col(
-                    html.Button(
-                        "Refresh",
-                        id="refresh-btn",
-                        n_clicks=0,
-                        style={
-                            "padding": "0px",
-                            "width": "100px",
-                            "margin-top": "33px",
-                        },
-                    ),
-                    width="auto",
-                ),
-                dbc.Col(
-                    children=[
-                        html.Button(
-                            "Export CSV",
-                            id="export_btn",
-                            n_clicks=0,
-                            style={
-                                "padding": "0px",
-                                "width": "100px",
-                                "margin-top": "33px",
-                            },
-                        ),
-                        html.Button(
-                            "Export Statistics",
-                            id="export_stats-btn",
-                            n_clicks=0,
-                            style={
-                                "padding": "0px",
-                                "margin-left":"10px",
-                                "width": "150px",
-                                "margin-top": "33px",
-                            },
-                        ),
-                        Download(id="download"),
-                        Download(id="download-stats"),
-                    ],
-                    width="auto",
-                ),
+                )
             ],
             style={"padding-left": "100px", "padding-top": "50px","margin-bottom":"50px"},
         ),        
         dcc.Tabs(
         children=[
             dcc.Tab(
-                label='Today',
+                label='Daily',
                 children=[
+                    dbc.Row(
+                    [
+                        dbc.Col(
+                            children=[
+                                html.P(
+                                    "Sample interval",
+                                    style={
+                                        "font-size": "16px",
+                                        "font-weight": "bold",
+                                        "color": "#7c795d",
+                                    },
+                                ),
+                                dcc.Dropdown(
+                                    id="sample-time-interval",
+                                    options=[
+                                        {"label": "1 minute", "value": "1"},
+                                        {"label": "5 minutes", "value": "5"},
+                                        {"label": "10 minutes", "value": "10"},
+                                    ],
+                                    value="5",
+                                    style={
+                                        "width": "150px",
+                                        "height": "50%",
+                                        "mergin-left": "50px",
+                                    },
+                                ),
+                            ],
+                            width="auto",
+                        ),
+                        dbc.Col(
+                            children=[
+                                html.P(
+                                    "Time interval",
+                                    style={
+                                        "font-size": "16px",
+                                        "font-weight": "bold",
+                                        "color": "#7c795d",
+                                    },
+                                ),
+                                dcc.Dropdown(
+                                    id="data-time-interval",
+                                    options=[
+                                        {"label": "6:00 - 18:00", "value": "06:00,18:00"},
+                                        {"label": "24 hours", "value": "00:00,23:59"},
+                                    ],
+                                    value="06:00,18:00",
+                                    style={
+                                        "width": "150px",
+                                        "height": "50%",
+                                        "mergin-left": "50px",
+                                    },
+                                ),
+                            ],
+                            width="auto",
+                        ),
+                        dbc.Col(
+                            children=[
+                                html.P(
+                                    "Date",
+                                    style={
+                                        "font-size": "16px",
+                                        "font-weight": "bold",
+                                        "color": "#7c795d",
+                                    },
+                                ),
+                                dcc.DatePickerSingle(
+                                    id="date-picker",
+                                    min_date_allowed=dt(2020, 7, 20),
+                                    max_date_allowed=datetime.date.today(),
+                                    date=datetime.date.today(),
+                                ),
+                            ],
+                            width="auto",
+                        ),
+                        dbc.Col(
+                            html.Button(
+                                "Refresh",
+                                id="refresh-btn",
+                                n_clicks=0,
+                                style={
+                                    "padding": "0px",
+                                    "width": "100px",
+                                    "margin-top": "33px",
+                                },
+                            ),
+                            width="auto",
+                        )
+                    ],
+            style={"padding-left": "100px", "padding-top": "20px"},
+        ),
                     dcc.Graph(id="data-plot", style={"height": 600}),
+                    html.Button(
+                            "Export Data",
+                            id="export_btn",
+                            n_clicks=0,
+                            style={
+                                "padding": "0px",
+                                "width": "100px",
+                                "margin-top": "33px",
+                                "margin-bottom":"20px"
+                            },
+                        ),
+                    Download(id="download"),
                     dash_table.DataTable(
                         id="table",
                         columns=[
@@ -289,6 +278,19 @@ app.layout = html.Div(
                 label='Statistics',
                 children=[
                     dcc.Graph(id="stats-plot", style={"height": 900}),
+                    html.Button(
+                            "Export Data",
+                            id="export_stats-btn",
+                            n_clicks=0,
+                            style={
+                                "padding": "0px",
+                                "margin-left":"20px",
+                                "width": "140px",
+                                "margin-top": "33px",
+                                "margin-bottom":"20px"
+                            },
+                        ),
+                        Download(id="download-stats")
                 ]
             )
         ]),
