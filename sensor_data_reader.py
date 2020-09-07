@@ -2,6 +2,13 @@ import os, datetime, time
 from configparser import ConfigParser
 from pathlib import Path
 from sensor import Sensor
+import smtplib, ssl
+from email.message import EmailMessage
+import sys
+
+if(float(sys.version[:3])<3.7):
+    from backports.datetime_fromisoformat import MonkeyPatch
+    MonkeyPatch.patch_fromisoformat()
 
 
 class SensorDataReader:
@@ -15,8 +22,9 @@ class SensorDataReader:
         self._sensors_details = [
             {"ip": i[0], "name": i[1]} for i in cp["sensors"].items()
         ]
-        self._sample_interval = cp.getfloat("settings", "sensor read interval")
+        self._sample_interval = cp.getint("settings", "sensor read interval")
         self._data_file_location = cp.get("settings", "data file location")
+        self._timeout_value = cp.getint("settings", "warning timeout")
 
     def _get_today(self):
         return datetime.date.today().strftime("%Y%m%d")
@@ -44,6 +52,18 @@ class SensorDataReader:
         for sensor in self._sensors:
             sensor.start_data_collection(self._sample_interval)
 
+    def _check_sensor_status(self):
+        sensors_status = self._data_file_location + os.sep + "sensors_status.csv"
+        first_line_in_file = "name,timestamp,timeout\n"
+
+        with open(sensors_status, "w") as f:
+            f.write(first_line_in_file)
+            for s in self._sensors:
+                if s.seconds_since_successful_read > self._timeout_value:
+                    f.write(s.name+","+str(s.time_of_last_successful_read)+","+"invalid\n")
+                else:
+                    f.write(s.name+","+str(s.time_of_last_successful_read)+","+"valid\n")
+
     def start(self):
         self._start_sensors()
         while True:
@@ -51,4 +71,11 @@ class SensorDataReader:
             with open(csv_file, "a") as f:
                 for s in self._sensors:
                     f.write(s.ip + "," + s.name + "," + s.latest_csv_data)
+                self._check_sensor_status()
             time.sleep(self._sample_interval)
+
+
+if __name__ == "__main__":
+    sdr = SensorDataReader("config.ini")
+    sdr.start()
+

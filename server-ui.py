@@ -18,6 +18,7 @@ import base64
 import dash_table
 import math
 from configparser import ConfigParser
+import dash_daq as daq
 
 
 server = Flask(__name__)
@@ -149,6 +150,13 @@ app.layout = html.Div(
                         ),
                     ],
                     width="auto",
+                ),
+                dbc.Col(
+                    id = "sensors-alive",
+                    width="auto",
+                    style = {
+                        "margin-top": "27px",
+                    }
                 )
             ],
             style={"padding-left": "100px", "padding-top": "50px","margin-bottom":"50px"},
@@ -200,10 +208,10 @@ app.layout = html.Div(
                                 dcc.Dropdown(
                                     id="data-time-interval",
                                     options=[
-                                        {"label": "6:00 - 18:00", "value": "06:00,18:00"},
                                         {"label": "24 hours", "value": "00:00,23:59"},
+                                        {"label": "6:00 - 18:00", "value": "06:00,18:00"},
                                     ],
-                                    value="06:00,18:00",
+                                    value="00:00,23:59",
                                     style={
                                         "width": "150px",
                                         "height": "50%",
@@ -292,7 +300,40 @@ app.layout = html.Div(
                         ),
                         Download(id="download-stats")
                 ]
-            )
+            ),
+            dcc.Tab(
+                label='Sensors Status',
+
+                children = [
+                    dash_table.DataTable(
+                            id="table-alive",
+                            columns=[
+                                {"id": "name", "name": "Name"},
+                                {"id": "timestamp", "name": "Timestamp"},
+                                {"id": "timeout", "name": "timeout"},
+                            ],
+                            style_table={"margin-left": "5%", "width": "20%","margin-top":"20px"},
+                            style_cell={"text-align": "left"},
+                            hidden_columns = ['timeout'],
+                            css=[{"selector": ".show-hide", "rule": "display: none"}],
+                            style_data_conditional=[
+                            {
+                                'if': {
+                                    'filter_query': '{timeout} eq "valid"',
+                                    'column_id': 'timestamp'
+                                },
+                                'backgroundColor': '#98ff98'
+                            },
+                            {
+                                'if': {
+                                    'filter_query': '{timeout} eq "invalid"',
+                                    'column_id': 'timestamp'
+                                },
+                                'backgroundColor': '#ff4040'
+                            }
+                        ]
+                        )
+                ])
         ]),
     dcc.ConfirmDialogProvider(
             children=html.Button(
@@ -361,6 +402,8 @@ def export_stats(n_clicks, date, parameter):
         Output("plot-title", "children"),
         Output("table", "data"),
         Output("stats-plot", "figure"),
+        Output("table-alive", "data"),
+        Output('sensors-alive', 'children')
     ],
     [
         Input("parameter-picker", "value"),
@@ -441,8 +484,32 @@ def update_output(
             {"yaxis": {"title": {"text": units[parameter]}}, "uirevision": date}
         )
 
-    return fig_main, parameter, table_data, fig_stats
+    table_sensors_alive = build_sensors_status()
+    sensors_alive = get_sensors_status()
+    #sensors_alive_stats = get_sensors_status(1)
+    
 
+    return fig_main, parameter, table_data, fig_stats, table_sensors_alive, sensors_alive
+
+
+def get_sensors_status():
+    sensors_csv = data_file_location + "/sensors_status.csv"
+    sensors_status = pd.read_csv(sensors_csv)
+    led_color = "green"
+    name = "Sensors Connected"
+    
+    for i in range (len(sensors_status)):
+        if(sensors_status.loc[i, "timeout"] == "invalid"):
+            led_color = "red"
+            name = "Some Sensors Disconnected"
+
+    led = daq.Indicator(
+        labelPosition = "bottom",
+        color = led_color,
+        label = name
+        )
+
+    return led
 
 def make_scatter(x_vals, y_vals, key, colour, leg):
     return go.Scatter(
@@ -451,7 +518,7 @@ def make_scatter(x_vals, y_vals, key, colour, leg):
         name=key,
         mode="lines + markers",
         marker=dict(color=colour),
-        connectgaps=True,
+        connectgaps=False,
         legendgroup=key,
         showlegend=leg,
     )
@@ -490,6 +557,20 @@ def build_table(df, sensor_tag, parameter):
         )
     return table_data
 
+def build_sensors_status():
+    sensors_csv = data_file_location + "/sensors_status.csv"
+    sensors_status = pd.read_csv(sensors_csv)
+    table_data_alive = []
+    for i in range (len(sensors_status)):
+        table_data_alive.append(
+            {
+                "name": sensors_status.loc[i, "name"],
+                "timestamp":sensors_status.loc[i, "timestamp"],
+                "timeout":sensors_status.loc[i, "timeout"],
+            }
+        )
+
+    return table_data_alive
 
 def get_and_condition_data(source):
     df = pd.read_csv(
@@ -527,5 +608,5 @@ def get_sensor_datafile_name(date):
 
 
 if __name__ == "__main__":
-    app.run_server(port=8051, debug=True, host="127.0.0.1")
+    app.run_server(port=8051, debug=True, host="0.0.0.0")
 
