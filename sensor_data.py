@@ -1,7 +1,18 @@
 #!/usr/bin/env python3
 from sensor_data_reader import SensorDataReader
 from stats_writer import StatsWriter
-import threading
+import threading, logging
+from configparser import ConfigParser
+
+config_file = "config.ini"
+cp = ConfigParser()
+cp.read(config_file)
+debug = cp.getboolean("logging", "debug")
+
+if debug:
+    logging.basicConfig(level=logging.DEBUG)
+else:
+    logging.basicConfig(level=logging.WARNING)
 
 
 if __name__ == "__main__":
