@@ -5,6 +5,7 @@ from sensor import Sensor
 import smtplib, ssl
 from email.message import EmailMessage
 import sys
+from cassandra.cluster import Cluster
 
 if(float(sys.version[:3])<3.7):
     from backports.datetime_fromisoformat import MonkeyPatch
@@ -64,14 +65,32 @@ class SensorDataReader:
                 else:
                     f.write(s.name+","+str(s.time_of_last_successful_read)+","+"valid\n")
 
+    def db_connect(self):
+        cluster = Cluster()
+        session = cluster.connect('sensors')
+        return session
+
+    def get_insert_stmt(self,session):
+        return session.prepare("INSERT INTO sensors_data (ip,name,date,time, temperature , relative_humidity , dew_point , co2_level ) values ( ?,?,?,?,?,?,?,?)")
+
     def start(self):
         self._start_sensors()
+
+        # To be re-structured, kept for testing
+        db_session = self.db_connect()
+        stmt = self.get_insert_stmt(db_session)
+
+        ## Only writes into DB
         while True:
-            csv_file = self._make_todays_csv_file_if_necessary()
-            with open(csv_file, "a") as f:
-                for s in self._sensors:
-                    f.write(s.ip + "," + s.name + "," + s.latest_csv_data)
-                self._check_sensor_status()
+            #csv_file = self._make_todays_csv_file_if_necessary()
+            #with open(csv_file, "a") as f:
+
+            for s in self._sensors:
+                if(len(s.latest_db_data) != 0):
+                    #f.write(s.ip + "," + s.name + "," + s.latest_csv_data)
+                    db_session.execute(stmt, s.latest_db_data)
+
+            #self._check_sensor_status()
             time.sleep(self._sample_interval)
 
 
