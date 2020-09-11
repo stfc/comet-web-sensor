@@ -2,7 +2,7 @@ import urllib.request
 import urllib.error
 import xml.etree.ElementTree as ET
 from datetime import datetime as dt
-#from datetime import timezone
+import logging
 import time
 import socket
 import threading
@@ -34,7 +34,11 @@ class Sensor:
         self._read_thread = None
 
     def _format_timestamp(self, isotime, format="%m/%d/%Y %H:%M:%S"):
-        return dt.fromisoformat(isotime).astimezone(timezone('Europe/London')).strftime(format)
+        return (
+            dt.fromisoformat(isotime)
+            .astimezone(timezone("Europe/London"))
+            .strftime(format)
+        )
 
     def _generate_timestamp(self, format="%m/%d/%Y %H:%M:%S"):
         return dt.now().strftime(format)
@@ -50,9 +54,14 @@ class Sensor:
             urllib.error.URLError,
             socket.timeout,
             http.client.BadStatusLine,
-        ):
-            self._data_received = False
-            return None
+        ) as e:
+            logging.warning("sensor ({}) read error: {}".format(self._name, str(e)))
+        except Exception as e:
+            logging.error(
+                "sensor ({}) unexpected error on read: {}".format(self._name, str(e))
+            )
+        self._data_received = False
+        return None
 
     def _read_xml_from_file(self, filename="test_data.xml"):
         with open(filename, "r") as f:
@@ -79,8 +88,11 @@ class Sensor:
                 }
                 time_string = xml.findtext("time")
                 data["Time"] = self._format_timestamp(time_string)
-                self._last_successful_read = dt.strptime(data["Time"], "%m/%d/%Y %H:%M:%S")
+                self._last_successful_read = dt.strptime(
+                    data["Time"], "%m/%d/%Y %H:%M:%S"
+                )
             self._latest_data = data
+            logging.info("sensor ({}) sent: {}".format(self._name, data))
             time.sleep(interval)
 
     def _sub_data_with_error(self, reason):
@@ -144,5 +156,6 @@ class Sensor:
 
 
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.DEBUG)
     s = Sensor({"ip": "1.2.3.4", "name": "test_sensor"})
     s.start_data_collection(10)
