@@ -25,7 +25,7 @@ from cassandra.cluster import Cluster
 server = Flask(__name__)
 
 cluster = Cluster()
-session = cluster.connect('sensors')
+session = cluster.connect('mydb')
 
 app = dash.Dash(
     __name__,
@@ -47,15 +47,15 @@ work_day_start = cp.get("settings", "work_day_start")
 work_day_end = cp.get("settings", "work_day_end")
 
 stats_file_dict = {
-    "Temperature": "Temp_stats.csv",
-    "Relative_humidity": "Humidity_stats.csv",
-    "Dew_point": "Dewpoint_stats.csv",
+    "temperature": "Temp_stats.csv",
+    "relative_humidity": "Humidity_stats.csv",
+    "dew_point": "Dewpoint_stats.csv",
     "co2_level": "CO2_stats.csv",
 }
 units = {
-    "Temperature": "C",
-    "Relative_humidity": "%",
-    "Dew_point": "C",
+    "temperature": "C",
+    "relative_humidity": "%",
+    "dew_point": "C",
     "co2_level": "ppm",
 }
 
@@ -119,10 +119,10 @@ app.layout = html.Div(
                         dcc.Dropdown(
                             id="parameter-picker",
                             options=[
-                                {"label": "co2 level", "value": "co2_level"},
-                                {"label": "Temperature", "value": "Temperature"},
-                                {"label": "Dew point", "value": "Dew_point"},
-                                {"label": "Humidity", "value": "Relative_humidity"},
+                                {"label": "CO2 level", "value": "co2_level"},
+                                {"label": "Temperature", "value": "temperature"},
+                                {"label": "Dew point", "value": "dew_point"},
+                                {"label": "Humidity", "value": "relative_humidity"},
                             ],
                             value="co2_level",
                             style={"width": "150px", "height": "50%"},
@@ -584,7 +584,7 @@ def get_and_condition_data(date,sample_interval,data_interval):
     start_time = dt.strptime(start_time, "%H:%M" ).time()
     end_time = dt.strptime(end_time, "%H:%M" ).time()
 
-    sel_cql = session.prepare("select * from sensors_data where date = ? AND time >= ? ALLOW FILTERING")
+    sel_cql = session.prepare("select * from sensors where date = ? AND time >= ? ALLOW FILTERING")
     df = pd.DataFrame(list(session.execute(sel_cql,[date,start_time]))[::sample_interval] )
     return df
 
