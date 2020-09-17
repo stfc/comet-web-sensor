@@ -19,9 +19,14 @@ import dash_table
 import math
 from configparser import ConfigParser
 import dash_daq as daq
+from cassandra.cluster import Cluster
 
 
 server = Flask(__name__)
+
+cluster = Cluster()
+session = cluster.connect('mydb')
+
 app = dash.Dash(
     __name__,
     server=server,
@@ -43,15 +48,15 @@ work_day_end = cp.get("settings", "work_day_end")
 
 stats_file_dict = {
     "Temperature": "Temp_stats.csv",
-    "Relative humidity": "Humidity_stats.csv",
-    "Dew point": "Dewpoint_stats.csv",
-    "CO2 level": "CO2_stats.csv",
+    "Relative_humidity": "Humidity_stats.csv",
+    "Dew_point": "Dewpoint_stats.csv",
+    "co2_level": "CO2_stats.csv",
 }
 units = {
     "Temperature": "C",
-    "Relative humidity": "%",
-    "Dew point": "C",
-    "CO2 level": "ppm",
+    "Relative_humidity": "%",
+    "Dew_point": "C",
+    "co2_level": "ppm",
 }
 
 
@@ -114,12 +119,12 @@ app.layout = html.Div(
                         dcc.Dropdown(
                             id="parameter-picker",
                             options=[
-                                {"label": "CO2 level", "value": "CO2 level"},
+                                {"label": "co2 level", "value": "co2_level"},
                                 {"label": "Temperature", "value": "Temperature"},
-                                {"label": "Dew point", "value": "Dew point"},
-                                {"label": "Humidity", "value": "Relative humidity"},
+                                {"label": "Dew point", "value": "Dew_point"},
+                                {"label": "Humidity", "value": "Relative_humidity"},
                             ],
-                            value="CO2 level",
+                            value="co2_level",
                             style={"width": "150px", "height": "50%"},
                         ),
                     ],
@@ -374,12 +379,15 @@ def update_current_date(n_intervals):
 @app.callback(
     Output("download", "data"),
     [Input("export_btn", "n_clicks")],
-    [State("date-picker", "date")],
+    [State("date-picker", "date"),
+    State("sample-time-interval", "value"),
+    State("data-time-interval", "value")
+    ],
 )
-def export_csv(n_clicks, date):
+def export_csv(n_clicks, date,sample_interval,data_interval):
     if n_clicks > 0:
         data_source = get_sensor_datafile_name(date)
-        df = get_and_condition_data(data_source)
+        df = get_and_condition_data(date,sample_interval,data_interval)
         out_filename = data_source.split("_")[0] + "_data.csv"
         return send_data_frame(df.to_csv, out_filename, index=False)
 
@@ -429,22 +437,19 @@ def update_output(
     )
 
     try:
-        data_source = get_sensor_datafile_name(date)
-        df = get_and_condition_data(data_source)
+        df = get_and_condition_data(date,int(sample_interval),data_interval)
     except FileNotFoundError:
         # TODO let user know that data for that day doesn't exist.
         return fig_main, parameter, [], fig_stats
 
-    df_time_filt = get_data_in_time_interval(data_interval, df)
     
     line_shape = ["solid","dash","dot","dashdot","longdash"]
     count_set = 0
     shape_index = 0
-    for key, grp in df_time_filt.groupby([sensor_tag]):
-        sample_interval = int(sample_interval)
+    for key, grp in df.groupby([sensor_tag]):
         fig_main.add_scattergl(
-            x=grp["Time"][::sample_interval],
-            y=grp[parameter][::sample_interval],
+            x=(grp["date"].astype(str) +" "+ grp["time"].astype(str)),
+            y=grp[parameter],
             name=key,
             mode="lines + markers",
             connectgaps=True,
@@ -486,7 +491,6 @@ def update_output(
 
     table_sensors_alive = build_sensors_status()
     sensors_alive = get_sensors_status()
-    #sensors_alive_stats = get_sensors_status(1)
     
 
     return fig_main, parameter, table_data, fig_stats, table_sensors_alive, sensors_alive
@@ -541,8 +545,7 @@ def get_data_in_time_interval(data_interval, df):
 
 
 def build_table(df, sensor_tag, parameter):
-    df = df.set_index("Time")
-    df = df.between_time(work_day_start, work_day_end)
+    df = df.set_index("time")
     table_data = []
     for key, grp in df.groupby([sensor_tag]):
         if math.isnan(grp[parameter].mean()):
@@ -572,20 +575,17 @@ def build_sensors_status():
 
     return table_data_alive
 
-def get_and_condition_data(source):
-    df = pd.read_csv(
-        source,
-        dtype={
-            "Temperature": "float",
-            "Relative humidity": "float",
-            "Dew point": "float",
-            "CO2 level": "float",
-        },
-        na_values=["connection", "-"],
-        parse_dates=["Time"],
-        infer_datetime_format=True,
-        cache_dates=True,
-    )
+def get_and_condition_data(date,sample_interval,data_interval):
+    """
+    Query sensors data on sepcific day
+    with specifid data interval and sample interval
+    """
+    start_time, end_time = data_interval.split(",")
+    start_time = dt.strptime(start_time, "%H:%M" ).time()
+    end_time = dt.strptime(end_time, "%H:%M" ).time()
+
+    sel_cql = session.prepare("select * from sensors where date = ? AND time >= ? ALLOW FILTERING")
+    df = pd.DataFrame(list(session.execute(sel_cql,[date,start_time]))[::sample_interval] )
     return df
 
 

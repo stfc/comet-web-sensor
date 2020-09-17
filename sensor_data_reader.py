@@ -6,6 +6,7 @@ import smtplib, ssl
 from email.message import EmailMessage
 import sys
 from cassandra.cluster import Cluster
+from DAO import SensorsDAO
 
 if(float(sys.version[:3])<3.7):
     from backports.datetime_fromisoformat import MonkeyPatch
