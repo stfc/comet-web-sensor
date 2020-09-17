@@ -25,7 +25,7 @@ from cassandra.cluster import Cluster
 server = Flask(__name__)
 
 cluster = Cluster()
-session = cluster.connect('mydb')
+session = cluster.connect('sensors')
 
 app = dash.Dash(
     __name__,
@@ -584,7 +584,7 @@ def get_and_condition_data(date,sample_interval,data_interval):
     start_time = dt.strptime(start_time, "%H:%M" ).time()
     end_time = dt.strptime(end_time, "%H:%M" ).time()
 
-    sel_cql = session.prepare("select * from sensors where date = ? AND time >= ? ALLOW FILTERING")
+    sel_cql = session.prepare("select * from sensors_data where date = ? AND time >= ? ALLOW FILTERING")
     df = pd.DataFrame(list(session.execute(sel_cql,[date,start_time]))[::sample_interval] )
     return df
 
