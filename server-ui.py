@@ -25,7 +25,7 @@ from cassandra.cluster import Cluster
 server = Flask(__name__)
 
 cluster = Cluster()
-session = cluster.connect('mydb')
+session = cluster.connect('sensors')
 
 app = dash.Dash(
     __name__,
@@ -213,10 +213,10 @@ app.layout = html.Div(
                                 dcc.Dropdown(
                                     id="data-time-interval",
                                     options=[
-                                        {"label": "24 hours", "value": "00:00,23:59"},
-                                        {"label": "6:00 - 18:00", "value": "06:00,18:00"},
+                                        {"label": "24 hours", "value": "00:00:00,23:59:00"},
+                                        {"label": "6:00 - 18:00", "value": "06:00:00,18:00:00"},
                                     ],
-                                    value="00:00,23:59",
+                                    value="00:00:00,23:59:00",
                                     style={
                                         "width": "150px",
                                         "height": "50%",
@@ -240,7 +240,7 @@ app.layout = html.Div(
                                     id="date-picker",
                                     min_date_allowed=dt(2020, 7, 20),
                                     max_date_allowed=datetime.date.today(),
-                                    date=datetime.date.today(),
+                                    date=dt(2020, 9, 16),
                                 ),
                             ],
                             width="auto",
@@ -461,8 +461,7 @@ def update_output(
 
     table_data = build_table(df, sensor_tag, parameter)
 
-    stats_file = stats_file_dict[parameter]
-    df_stats = get_and_condition_stats(stats_file)
+    df_stats = get_and_condition_stats(parameter)
 
     colour_index = 0
     colour_map = px.colors.qualitative.Light24
@@ -471,15 +470,15 @@ def update_output(
         colour = colour_map[colour_index]
 
         fig_stats.add_trace(
-            make_scatter(grp["date"], grp["peak"], key, colour, True), row=1, col=1
+            make_scatter(grp["date"].astype(str), grp["peak"], key, colour, True), row=1, col=1
         )
 
         fig_stats.add_trace(
-            make_scatter(grp["date"], grp["mean"], key, colour, False), row=2, col=1
+            make_scatter(grp["date"].astype(str), grp["mean"], key, colour, False), row=2, col=1
         )
 
         fig_stats.add_trace(
-            make_scatter(grp["date"], grp["std"], key, colour, False), row=3, col=1
+            make_scatter(grp["date"].astype(str), grp["std"], key, colour, False), row=3, col=1
         )
 
         colour_index = (colour_index + 1) % len(colour_map)
@@ -581,23 +580,28 @@ def get_and_condition_data(date,sample_interval,data_interval):
     with specifid data interval and sample interval
     """
     start_time, end_time = data_interval.split(",")
-    start_time = dt.strptime(start_time, "%H:%M" ).time()
-    end_time = dt.strptime(end_time, "%H:%M" ).time()
+    start_time = dt.strptime(start_time, "%H:%M:%S" ).time()
+    end_time = dt.strptime(end_time, "%H:%M:%S" ).time()
 
-    sel_cql = session.prepare("select * from sensors where date = ? AND time >= ? ALLOW FILTERING")
-    df = pd.DataFrame(list(session.execute(sel_cql,[date,start_time]))[::sample_interval] )
+    stmt_time_interval = session.prepare("select * from mydb.sensors where date = ? AND time >= ? AND time <= ? ALLOW FILTERING")
+    stmt_date_interval = session.prepare("select * from mydb.sensors where date = ?")
+
+    if(end_time.hour - start_time.hour < 23):
+        df = pd.DataFrame(list(session.execute(stmt_time_interval,[date,start_time,end_time]))[::sample_interval] )
+    else:
+        df = pd.DataFrame(list(session.execute(stmt_date_interval,[date]))[::sample_interval] )
     return df
 
 
 def get_and_condition_stats(source):
-    filename = data_file_location + os.sep + source
-    df = pd.read_csv(
-        filename,
-        dtype={"peak": "float", "mean": "float", "std": "float"},
-        parse_dates=["date"],
-        infer_datetime_format=True,
-        cache_dates=True,
-    )
+
+    stmt_list = {"co2_level":"select * from co2_level",
+                "dew_point":"select * from dew_point",
+                "relative_humidity":"select * from relative_humidity",
+                "temperature":"select * from temperature"}
+
+    df = pd.DataFrame(list(session.execute(stmt_list[source])) )
+
     return df
 
 
