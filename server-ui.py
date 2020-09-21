@@ -583,8 +583,8 @@ def get_and_condition_data(date,sample_interval,data_interval):
     start_time = dt.strptime(start_time, "%H:%M:%S" ).time()
     end_time = dt.strptime(end_time, "%H:%M:%S" ).time()
 
-    stmt_time_interval = session.prepare("select * from mydb.sensors where date = ? AND time >= ? AND time <= ? ALLOW FILTERING")
-    stmt_date_interval = session.prepare("select * from mydb.sensors where date = ?")
+    stmt_time_interval = session.prepare("select * from sensors_data where date = ? AND time >= ? AND time <= ? ALLOW FILTERING")
+    stmt_date_interval = session.prepare("select * from sensors_data where date = ?")
 
     if(end_time.hour - start_time.hour < 23):
         df = pd.DataFrame(list(session.execute(stmt_time_interval,[date,start_time,end_time]))[::sample_interval] )
