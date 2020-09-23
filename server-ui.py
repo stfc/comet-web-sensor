@@ -20,12 +20,21 @@ import math
 from configparser import ConfigParser
 import dash_daq as daq
 from cassandra.cluster import Cluster
+from cassandra.query import SimpleStatement
+from cassandra.query import dict_factory
 
 
 server = Flask(__name__)
 
 cluster = Cluster()
 session = cluster.connect('sensors')
+
+def pandas_factory(colnames, rows):
+    return pd.DataFrame(rows, columns=colnames)
+
+
+session.row_factory = pandas_factory
+session.default_fetch_size = None
 
 app = dash.Dash(
     __name__,
@@ -437,19 +446,23 @@ def update_output(
     )
 
     try:
-        df = get_and_condition_data(date,int(sample_interval),data_interval)
+        df = get_and_condition_data(date)
     except FileNotFoundError:
         # TODO let user know that data for that day doesn't exist.
         return fig_main, parameter, [], fig_stats
 
     
+    df_time_filt = get_data_in_time_interval(data_interval, df)
+
     line_shape = ["solid","dash","dot","dashdot","longdash"]
     count_set = 0
     shape_index = 0
-    for key, grp in df.groupby([sensor_tag]):
+    sample_interval = int(sample_interval)
+
+    for key, grp in df_time_filt.groupby([sensor_tag]):
         fig_main.add_scattergl(
-            x=(grp["date"].astype(str) +" "+ grp["time"].astype(str)),
-            y=grp[parameter],
+            x=grp["datetime"][::sample_interval],
+            y=grp[parameter][::sample_interval],
             name=key,
             mode="lines + markers",
             connectgaps=True,
@@ -539,12 +552,12 @@ def setup_graph_title(title_string):
 
 def get_data_in_time_interval(data_interval, df):
     start_time, end_time = data_interval.split(",")
-    df = df.set_index("Time").between_time(start_time, end_time).reset_index()
+    df = df.set_index("datetime").between_time(start_time, end_time).reset_index()
     return df
 
 
 def build_table(df, sensor_tag, parameter):
-    df = df.set_index("time")
+    df = df.set_index("datetime")
     table_data = []
     for key, grp in df.groupby([sensor_tag]):
         if math.isnan(grp[parameter].mean()):
@@ -574,34 +587,27 @@ def build_sensors_status():
 
     return table_data_alive
 
-def get_and_condition_data(date,sample_interval,data_interval):
+def get_and_condition_data(date):
     """
     Query sensors data on sepcific day
     with specifid data interval and sample interval
     """
-    start_time, end_time = data_interval.split(",")
-    start_time = dt.strptime(start_time, "%H:%M:%S" ).time()
-    end_time = dt.strptime(end_time, "%H:%M:%S" ).time()
+    stmt_time_interval = session.prepare("select * from sensors_data where datetime >= ? AND datetime <= ? ALLOW FILTERING")
+    stmt_date_single = session.prepare("select * from sensors_data where date = ?")
 
-    stmt_time_interval = session.prepare("select * from sensors_data where date = ? AND time >= ? AND time <= ? ALLOW FILTERING")
-    stmt_date_interval = session.prepare("select * from sensors_data where date = ?")
+    df = session.execute(stmt_date_single,[date])._current_rows
 
-    if(end_time.hour - start_time.hour < 23):
-        df = pd.DataFrame(list(session.execute(stmt_time_interval,[date,start_time,end_time]))[::sample_interval] )
-    else:
-        df = pd.DataFrame(list(session.execute(stmt_date_interval,[date]))[::sample_interval] )
     return df
 
 
 def get_and_condition_stats(source):
 
-    stmt_list = {"co2_level":"select * from co2_level",
-                "dew_point":"select * from dew_point",
-                "relative_humidity":"select * from relative_humidity",
-                "temperature":"select * from temperature"}
+    stmt_list = {"co2_level":"select * from sensors.co2_level",
+                "dew_point":"select * from sensors.dew_point",
+                "relative_humidity":"select * from sensors.relative_humidity",
+                "temperature":"select * from sensors.temperature"}
 
-    df = pd.DataFrame(list(session.execute(stmt_list[source])) )
-
+    df = session.execute(stmt_list[source])._current_rows
     return df
 
 
