@@ -514,7 +514,6 @@ def export_stats(n_clicks, date, parameter):
         Output("stats-plot", "figure"),
         Output("table-alive", "data"),
         Output('sensors-alive', 'children'),
-        Output("data-plot-range", "figure"),
     ],
     [
         Input("parameter-picker", "value"),
@@ -535,7 +534,6 @@ def update_output(
 ):
 
     fig_main = go.Figure()
-    fig_range = go.Figure()
     fig_stats = make_subplots(
         rows=3,
         cols=1,
@@ -545,14 +543,13 @@ def update_output(
     )
 
     try:
-        df,df_range = get_and_condition_data(date,[start_date,end_date])
+        df = get_and_condition_data(date)
     except FileNotFoundError:
         # TODO let user know that data for that day doesn't exist.
         return fig_main, parameter, [], fig_stats
 
     
     df_time_filt = get_data_in_time_interval(data_interval, df)
-    #df_time_filt_range = get_data_in_time_interval(data_interval, df_range)
 
     line_shape = ["solid","dash","dot","dashdot","longdash"]
     count_set = 0
@@ -561,19 +558,6 @@ def update_output(
 
     for key, grp in df_time_filt.groupby([sensor_tag]):
         fig_main.add_scattergl(
-            x=grp["datetime"][::sample_interval],
-            y=grp[parameter][::sample_interval],
-            name=key,
-            mode="lines + markers",
-            connectgaps=True,
-            line=dict(dash=line_shape[shape_index])
-        )
-        count_set+=1
-        if(count_set % len(px.colors.qualitative.Plotly) == 0):
-            shape_index = (shape_index + 1) % len(line_shape)
-
-    for key, grp in df_range.groupby([sensor_tag]):
-        fig_range.add_scattergl(
             x=grp["datetime"][::sample_interval],
             y=grp[parameter][::sample_interval],
             name=key,
@@ -609,7 +593,7 @@ def update_output(
 
         colour_index = (colour_index + 1) % len(colour_map)
 
-    for f in [fig_main, fig_stats,fig_range]:
+    for f in [fig_main, fig_stats]:
         f.update_layout(
             {"yaxis": {"title": {"text": units[parameter]}}, "uirevision": date}
         )
@@ -618,8 +602,54 @@ def update_output(
     sensors_alive = get_sensors_status()
     
 
-    return fig_main, parameter, table_data, fig_stats, table_sensors_alive, sensors_alive,fig_range
+    return fig_main, parameter, table_data, fig_stats, table_sensors_alive, sensors_alive
 
+
+@app.callback(
+        Output("data-plot-range", "figure"),
+    [
+        Input("parameter-picker", "value"),
+        Input("legend-display-picker", "value"),
+        Input("date-picker-range", "start_date"),
+        Input("date-picker-range", "end_date"),
+        Input("sample-time-interval-range", "value"),
+    ],
+)
+def update_output_dateRange(
+    parameter, sensor_tag, start_date,end_date,sample_interval
+):
+
+    fig_range = go.Figure()
+        
+    try:
+        df_range = get_and_condition_data(start_date,start_date,end_date)
+    except FileNotFoundError:
+        # TODO let user know that data for that day doesn't exist.
+        return []
+
+    line_shape = ["solid","dash","dot","dashdot","longdash"]
+    count_set = 0
+    shape_index = 0
+    sample_interval = int(sample_interval)
+
+    for key, grp in df_range.groupby([sensor_tag]):
+        fig_range.add_scattergl(
+            x=grp["datetime"][::sample_interval],
+            y=grp[parameter][::sample_interval],
+            name=key,
+            mode="lines + markers",
+            connectgaps=True,
+            line=dict(dash=line_shape[shape_index])
+        )
+        count_set+=1
+        if(count_set % len(px.colors.qualitative.Plotly) == 0):
+            shape_index = (shape_index + 1) % len(line_shape)
+
+    fig_range.update_layout(
+            {"yaxis": {"title": {"text": units[parameter]}}}
+        )
+
+    return fig_range
 
 def get_sensors_status():
     sensors_csv = data_file_location + "/sensors_status.csv"
@@ -700,18 +730,20 @@ def build_sensors_status():
 
     return table_data_alive
 
-def get_and_condition_data(date, range_date):
+def get_and_condition_data(date, start_date = '', end_date = ''):
     """
-    Query sensors data on sepcific day
-    with specifid data interval and sample interval
+    Query sensors data on with specified date/date range
     """
     stmt_time_interval = session.prepare("select * from mydb.sensors4 where date >= ? AND date <= ? ALLOW FILTERING")
     stmt_date_single = session.prepare("select * from mydb.sensors4 where date = ?")
 
-    df = session.execute(stmt_date_single,[date])._current_rows
-    df_range = session.execute(stmt_time_interval,[range_date[0],range_date[1]])._current_rows
-
-    return df,df_range
+    if(start_date == end_date):
+        df = session.execute(stmt_date_single,[date])._current_rows
+    
+    else:
+        df = session.execute(stmt_time_interval,[start_date,end_date])._current_rows
+    
+    return df
 
 
 def get_and_condition_stats(source):
