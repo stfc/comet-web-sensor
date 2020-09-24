@@ -5,6 +5,7 @@ import os, glob
 from pathlib import Path
 import numpy as np
 import time
+from cassandra.cluster import Cluster
 
 
 class StatsWriter:
@@ -74,12 +75,35 @@ class StatsWriter:
                 stats_dataframe.to_csv(header=False, index=False, line_terminator="\n")
             )
 
+    def _write_dataframe_to_db(self,measurement,filename,session):
+        readfile = self._data_file_location + os.sep + filename
+        stmt = {"CO2 level": session.prepare("INSERT INTO co2_level (date,ip,name,peak,mean,std ) values ( ?,?,?,?,?,?)"),
+                "Dew point": session.prepare("INSERT INTO dew_point (date,ip,name,peak,mean,std ) values ( ?,?,?,?,?,?)"),
+                "Relative humidity": session.prepare("INSERT INTO relative_humidity (date,ip,name,peak,mean,std ) values ( ?,?,?,?,?,?)"),
+                "Temperature": session.prepare("INSERT INTO temperature (date,ip,name,peak,mean,std ) values ( ?,?,?,?,?,?)") }
+
+        df = pd.read_csv(readfile, dtype={"peak": "float", "mean": "float", "std": "float"})
+        df['date'] = pd.to_datetime(df['date'], format='%d/%m/%Y')
+
+        for i in range(len(df)):
+            
+            ip = df.loc[i, "ip"]
+            name = df.loc[i, "name"]
+            date = df.loc[i, "date"]
+            peak = df.loc[i, "peak"]
+            std = df.loc[i, "std"]
+            mean = df.loc[i, "mean"]
+            
+            session.execute(stmt[measurement], [date,ip,name,peak,mean,std])
 
     def start(self):
+        cluster = Cluster()
+        session = cluster.connect('sensors')
         while True:
             for measurement, filename in self._measurement_files.items():
-                stats_data = self._process_stats_for_files(measurement)
-                self._write_dataframe_to_file(stats_data, filename)
+                #stats_data = self._process_stats_for_files(measurement)
+                #self._write_dataframe_to_file(stats_data, filename)
+                self._write_dataframe_to_db(measurement,filename,session)
             time.sleep(self._update_interval)
 
 
