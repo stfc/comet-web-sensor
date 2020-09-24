@@ -249,7 +249,7 @@ app.layout = html.Div(
                                     id="date-picker",
                                     min_date_allowed=dt(2020, 7, 20),
                                     max_date_allowed=datetime.date.today(),
-                                    date=dt(2020, 9, 16),
+                                    date=datetime.date.today(),
                                 ),
                             ],
                             width="auto",
@@ -347,7 +347,103 @@ app.layout = html.Div(
                             }
                         ]
                         )
-                ])
+                ]),
+            dcc.Tab(
+                label='Historical Range',
+                children=[
+                    dbc.Row(
+                    [
+                        dbc.Col(
+                            children=[
+                                html.P(
+                                    "Sample interval",
+                                    style={
+                                        "font-size": "16px",
+                                        "font-weight": "bold",
+                                        "color": "#7c795d",
+                                    },
+                                ),
+                                dcc.Dropdown(
+                                    id="sample-time-interval-range",
+                                    options=[
+                                        {"label": "1 minute", "value": "1"},
+                                        {"label": "5 minutes", "value": "5"},
+                                        {"label": "10 minutes", "value": "10"},
+                                    ],
+                                    value="5",
+                                    style={
+                                        "width": "150px",
+                                        "height": "50%",
+                                        "mergin-left": "50px",
+                                    },
+                                ),
+                            ],
+                            width="auto",
+                        ),
+                        dbc.Col(
+                            children=[
+                                html.P(
+                                    "Time interval",
+                                    style={
+                                        "font-size": "16px",
+                                        "font-weight": "bold",
+                                        "color": "#7c795d",
+                                    },
+                                ),
+                                dcc.Dropdown(
+                                    id="data-time-interval-range",
+                                    options=[
+                                        {"label": "24 hours", "value": "00:00:00,23:59:00"},
+                                        {"label": "6:00 - 18:00", "value": "06:00:00,18:00:00"},
+                                    ],
+                                    value="00:00:00,23:59:00",
+                                    style={
+                                        "width": "150px",
+                                        "height": "50%",
+                                        "mergin-left": "50px",
+                                    },
+                                ),
+                            ],
+                            width="auto",
+                        ),
+                        dbc.Col(
+                            children=[
+                                html.P(
+                                    "Date",
+                                    style={
+                                        "font-size": "16px",
+                                        "font-weight": "bold",
+                                        "color": "#7c795d",
+                                    },
+                                ),
+                                dcc.DatePickerRange(
+                                id='date-picker-range',
+                                min_date_allowed=dt(2020, 7, 20),
+                                max_date_allowed=datetime.date.today(),
+                                start_date=datetime.date.today(),
+                                end_date=datetime.date.today()
+                                ),
+                            ],
+                            width="auto",
+                        )
+                    ],
+            style={"padding-left": "100px", "padding-top": "20px"},
+        ),
+                    dcc.Graph(id="data-plot-range", style={"height": 600}),
+                    html.Button(
+                            "Export Data",
+                            id="export_btn-range",
+                            n_clicks=0,
+                            style={
+                                "padding": "0px",
+                                "width": "100px",
+                                "margin-top": "33px",
+                                "margin-bottom":"20px"
+                            },
+                        ),
+                    Download(id="download-range")
+                ]
+            )
         ]),
     dcc.ConfirmDialogProvider(
             children=html.Button(
@@ -388,15 +484,12 @@ def update_current_date(n_intervals):
 @app.callback(
     Output("download", "data"),
     [Input("export_btn", "n_clicks")],
-    [State("date-picker", "date"),
-    State("sample-time-interval", "value"),
-    State("data-time-interval", "value")
-    ],
+    [State("date-picker", "date")],
 )
-def export_csv(n_clicks, date,sample_interval,data_interval):
+def export_csv(n_clicks, date):
     if n_clicks > 0:
         data_source = get_sensor_datafile_name(date)
-        df = get_and_condition_data(date,sample_interval,data_interval)
+        df = get_and_condition_data(date)
         out_filename = data_source.split("_")[0] + "_data.csv"
         return send_data_frame(df.to_csv, out_filename, index=False)
 
@@ -420,7 +513,8 @@ def export_stats(n_clicks, date, parameter):
         Output("table", "data"),
         Output("stats-plot", "figure"),
         Output("table-alive", "data"),
-        Output('sensors-alive', 'children')
+        Output('sensors-alive', 'children'),
+        Output("data-plot-range", "figure"),
     ],
     [
         Input("parameter-picker", "value"),
@@ -430,13 +524,18 @@ def export_stats(n_clicks, date, parameter):
         Input("refresh-btn", "n_clicks"),
         Input("sample-time-interval", "value"),
         Input("data-time-interval", "value"),
+        Input("date-picker-range", "start_date"),
+        Input("date-picker-range", "end_date"),
+        Input("sample-time-interval-range", "value"),
+        Input("data-time-interval-range", "value"),
     ],
 )
 def update_output(
-    parameter, sensor_tag, n_intervals, date, n_clicks, sample_interval, data_interval
+    parameter, sensor_tag, n_intervals, date, n_clicks, sample_interval, data_interval, start_date,end_date,sample_interval_range,data_interval_range
 ):
 
     fig_main = go.Figure()
+    fig_range = go.Figure()
     fig_stats = make_subplots(
         rows=3,
         cols=1,
@@ -446,13 +545,14 @@ def update_output(
     )
 
     try:
-        df = get_and_condition_data(date)
+        df,df_range = get_and_condition_data(date,[start_date,end_date])
     except FileNotFoundError:
         # TODO let user know that data for that day doesn't exist.
         return fig_main, parameter, [], fig_stats
 
     
     df_time_filt = get_data_in_time_interval(data_interval, df)
+    #df_time_filt_range = get_data_in_time_interval(data_interval, df_range)
 
     line_shape = ["solid","dash","dot","dashdot","longdash"]
     count_set = 0
@@ -461,6 +561,19 @@ def update_output(
 
     for key, grp in df_time_filt.groupby([sensor_tag]):
         fig_main.add_scattergl(
+            x=grp["datetime"][::sample_interval],
+            y=grp[parameter][::sample_interval],
+            name=key,
+            mode="lines + markers",
+            connectgaps=True,
+            line=dict(dash=line_shape[shape_index])
+        )
+        count_set+=1
+        if(count_set % len(px.colors.qualitative.Plotly) == 0):
+            shape_index = (shape_index + 1) % len(line_shape)
+
+    for key, grp in df_range.groupby([sensor_tag]):
+        fig_range.add_scattergl(
             x=grp["datetime"][::sample_interval],
             y=grp[parameter][::sample_interval],
             name=key,
@@ -496,7 +609,7 @@ def update_output(
 
         colour_index = (colour_index + 1) % len(colour_map)
 
-    for f in [fig_main, fig_stats]:
+    for f in [fig_main, fig_stats,fig_range]:
         f.update_layout(
             {"yaxis": {"title": {"text": units[parameter]}}, "uirevision": date}
         )
@@ -505,7 +618,7 @@ def update_output(
     sensors_alive = get_sensors_status()
     
 
-    return fig_main, parameter, table_data, fig_stats, table_sensors_alive, sensors_alive
+    return fig_main, parameter, table_data, fig_stats, table_sensors_alive, sensors_alive,fig_range
 
 
 def get_sensors_status():
@@ -587,17 +700,18 @@ def build_sensors_status():
 
     return table_data_alive
 
-def get_and_condition_data(date):
+def get_and_condition_data(date, range_date):
     """
     Query sensors data on sepcific day
     with specifid data interval and sample interval
     """
-    stmt_time_interval = session.prepare("select * from sensors_data where datetime >= ? AND datetime <= ? ALLOW FILTERING")
-    stmt_date_single = session.prepare("select * from sensors_data where date = ?")
+    stmt_time_interval = session.prepare("select * from mydb.sensors4 where date >= ? AND date <= ? ALLOW FILTERING")
+    stmt_date_single = session.prepare("select * from mydb.sensors4 where date = ?")
 
     df = session.execute(stmt_date_single,[date])._current_rows
+    df_range = session.execute(stmt_time_interval,[range_date[0],range_date[1]])._current_rows
 
-    return df
+    return df,df_range
 
 
 def get_and_condition_stats(source):
