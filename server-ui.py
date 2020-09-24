@@ -573,25 +573,25 @@ def update_output(
 
     df_stats = get_and_condition_stats(parameter)
 
-    colour_index = 0
-    colour_map = px.colors.qualitative.Light24
+    count_set = shape_index = 0
+
     for key, grp in df_stats.groupby([sensor_tag]):
 
-        colour = colour_map[colour_index]
-
         fig_stats.add_trace(
-            make_scatter(grp["date"].astype(str), grp["peak"], key, colour, True), row=1, col=1
+            make_scatter(grp["date"].astype(str), grp["peak"], key, line_shape[shape_index], True), row=1, col=1
         )
 
         fig_stats.add_trace(
-            make_scatter(grp["date"].astype(str), grp["mean"], key, colour, False), row=2, col=1
+            make_scatter(grp["date"].astype(str), grp["mean"], key, line_shape[shape_index], False), row=2, col=1
         )
 
         fig_stats.add_trace(
-            make_scatter(grp["date"].astype(str), grp["std"], key, colour, False), row=3, col=1
+            make_scatter(grp["date"].astype(str), grp["std"], key, line_shape[shape_index], False), row=3, col=1
         )
 
-        colour_index = (colour_index + 1) % len(colour_map)
+        count_set+=1
+        if(count_set % len(px.colors.qualitative.Plotly) == 0):
+            shape_index = (shape_index + 1) % len(line_shape)
 
     for f in [fig_main, fig_stats]:
         f.update_layout(
@@ -670,16 +670,16 @@ def get_sensors_status():
 
     return led
 
-def make_scatter(x_vals, y_vals, key, colour, leg):
+def make_scatter(x_vals, y_vals, key, line_shape, leg):
     return go.Scatter(
         x=x_vals,
         y=y_vals,
         name=key,
         mode="lines + markers",
-        marker=dict(color=colour),
         connectgaps=False,
         legendgroup=key,
         showlegend=leg,
+        line=dict(dash=line_shape)
     )
 
 
@@ -738,7 +738,7 @@ def get_and_condition_data(date, start_date = '', end_date = ''):
     stmt_date_single = session.prepare("select * from mydb.sensors4 where date = ?")
 
     if(start_date == end_date):
-        df = session.execute(stmt_date_single,[date])._current_rows
+        df = session.execute(stmt_date_single,['2020-09-21'])._current_rows
     
     else:
         df = session.execute(stmt_time_interval,[start_date,end_date])._current_rows
