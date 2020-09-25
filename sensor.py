@@ -115,7 +115,7 @@ class Sensor:
         data_list.append(self._ip)
         data_list.append(self._name)
         data_list.append(dt.strptime(self._latest_data["Time"], "%m/%d/%Y %H:%M:%S"))
-        data_list.append(dt.strptime(self._latest_data["Time"], "%m/%d/%Y %H:%M:%S").time())
+        data_list.append(dt.strptime(self._latest_data["Time"], "%m/%d/%Y %H:%M:%S"))
         data_list.append(float(self._latest_data["Temperature"]))
         data_list.append(float(self._latest_data["Relative humidity"]))
         data_list.append(float(self._latest_data["Dew point"]))

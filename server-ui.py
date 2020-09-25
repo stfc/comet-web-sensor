@@ -738,7 +738,7 @@ def get_and_condition_data(date, start_date = '', end_date = ''):
     stmt_date_single = session.prepare("select * from sensors_data where date = ?")
 
     if(start_date == end_date):
-        df = session.execute(stmt_date_single,['2020-09-21'])._current_rows
+        df = session.execute(stmt_date_single,[date])._current_rows
     
     else:
         df = session.execute(stmt_time_interval,[start_date,end_date])._current_rows

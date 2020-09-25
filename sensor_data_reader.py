@@ -71,7 +71,7 @@ class SensorDataReader:
         return session
 
     def get_insert_stmt(self,session):
-        return session.prepare("INSERT INTO sensors_data (ip,name,date,time, temperature , relative_humidity , dew_point , co2_level ) values ( ?,?,?,?,?,?,?,?)")
+        return session.prepare("INSERT INTO sensors_data (ip,name,date,datetime, temperature , relative_humidity , dew_point , co2_level ) values ( ?,?,?,?,?,?,?,?)")
 
     def start(self):
         self._start_sensors()
