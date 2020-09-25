@@ -716,7 +716,7 @@ def get_and_condition_data(date, start_date = '', end_date = ''):
     """
     Query sensors data on with specified date/date range
     """
-    stmt_time_interval = session.prepare("select ip,datetime,co2_level,dew_point,name,relative_humidity,temperature) from sensors_data where date >= ? AND date <= ? ALLOW FILTERING")
+    stmt_time_interval = session.prepare("select ip,datetime,co2_level,dew_point,name,relative_humidity,temperature from sensors_data where date >= ? AND date <= ? ALLOW FILTERING")
     stmt_date_single = session.prepare("select * from sensors_data where date = ?")
 
     if(start_date == end_date):
