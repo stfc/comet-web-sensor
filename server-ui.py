@@ -383,32 +383,6 @@ app.layout = html.Div(
                         dbc.Col(
                             children=[
                                 html.P(
-                                    "Time interval",
-                                    style={
-                                        "font-size": "16px",
-                                        "font-weight": "bold",
-                                        "color": "#7c795d",
-                                    },
-                                ),
-                                dcc.Dropdown(
-                                    id="data-time-interval-range",
-                                    options=[
-                                        {"label": "24 hours", "value": "00:00:00,23:59:00"},
-                                        {"label": "6:00 - 18:00", "value": "06:00:00,18:00:00"},
-                                    ],
-                                    value="00:00:00,23:59:00",
-                                    style={
-                                        "width": "150px",
-                                        "height": "50%",
-                                        "mergin-left": "50px",
-                                    },
-                                ),
-                            ],
-                            width="auto",
-                        ),
-                        dbc.Col(
-                            children=[
-                                html.P(
                                     "Date",
                                     style={
                                         "font-size": "16px",
@@ -482,6 +456,18 @@ def update_current_date(n_intervals):
 
 
 @app.callback(
+    Output("download-range", "data"),
+    [Input("export_btn-range", "n_clicks")],
+    [State("date-picker-range", "start_date"),
+    State("date-picker-range", "end_date")],
+)
+def export_range_csv(n_clicks, start_date,end_date):
+    if n_clicks > 0:
+        df = get_and_condition_data(start_date,start_date,end_date)
+        out_filename = str(start_date)+ "_"+ str(end_date) + "_data.csv"
+        return send_data_frame(df.to_csv, out_filename, index=False)
+
+@app.callback(
     Output("download", "data"),
     [Input("export_btn", "n_clicks")],
     [State("date-picker", "date")],
@@ -523,14 +509,10 @@ def export_stats(n_clicks, date, parameter):
         Input("refresh-btn", "n_clicks"),
         Input("sample-time-interval", "value"),
         Input("data-time-interval", "value"),
-        Input("date-picker-range", "start_date"),
-        Input("date-picker-range", "end_date"),
-        Input("sample-time-interval-range", "value"),
-        Input("data-time-interval-range", "value"),
     ],
 )
 def update_output(
-    parameter, sensor_tag, n_intervals, date, n_clicks, sample_interval, data_interval, start_date,end_date,sample_interval_range,data_interval_range
+    parameter, sensor_tag, n_intervals, date, n_clicks, sample_interval, data_interval
 ):
 
     fig_main = go.Figure()
@@ -734,7 +716,7 @@ def get_and_condition_data(date, start_date = '', end_date = ''):
     """
     Query sensors data on with specified date/date range
     """
-    stmt_time_interval = session.prepare("select * from sensors_data where date >= ? AND date <= ? ALLOW FILTERING")
+    stmt_time_interval = session.prepare("select ip,datetime,co2_level,dew_point,name,relative_humidity,temperature) from sensors_data where date >= ? AND date <= ? ALLOW FILTERING")
     stmt_date_single = session.prepare("select * from sensors_data where date = ?")
 
     if(start_date == end_date):
