@@ -465,7 +465,7 @@ def export_range_csv(n_clicks, start_date,end_date):
     if n_clicks > 0:
         df = get_and_condition_data(start_date,start_date,end_date)
         out_filename = str(start_date)+ "_"+ str(end_date) + "_data.csv"
-        return send_data_frame(df.to_csv, out_filename, index=False)
+        return send_data_frame(df.sort_values(by=['datetime']).to_csv, out_filename, index=False)
 
 @app.callback(
     Output("download", "data"),
@@ -605,6 +605,7 @@ def update_output_dateRange(
         
     try:
         df_range = get_and_condition_data(start_date,start_date,end_date)
+        df_range = df_range.sort_values(by=['datetime'])
     except FileNotFoundError:
         # TODO let user know that data for that day doesn't exist.
         return []
