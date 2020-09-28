@@ -459,25 +459,44 @@ def update_current_date(n_intervals):
     Output("download-range", "data"),
     [Input("export_btn-range", "n_clicks")],
     [State("date-picker-range", "start_date"),
-    State("date-picker-range", "end_date")],
+    State("date-picker-range", "end_date"),
+    State("data-plot-range", "figure"),
+    State("legend-display-picker", "value")],
 )
-def export_range_csv(n_clicks, start_date,end_date):
+def export_range_csv(n_clicks, start_date,end_date,plot,sensor_tag):
     if n_clicks > 0:
         df = get_and_condition_data(start_date,start_date,end_date)
         out_filename = str(start_date)+ "_"+ str(end_date) + "_data.csv"
-        return send_data_frame(df.sort_values(by=['datetime']).to_csv, out_filename, index=False)
+
+        visible_traces = []
+        for key in plot['data']:
+            if(key.get('visible') == 1 or str(key.get('visible')) == 'None'):
+                visible_traces.append(key.get(sensor_tag))
+        df = df[df[sensor_tag].isin(visible_traces)]
+
+        return send_data_frame(df.sort_values(by=['ip','datetime']).to_csv, out_filename, index=False)
 
 @app.callback(
     Output("download", "data"),
     [Input("export_btn", "n_clicks")],
-    [State("date-picker", "date")],
+    [State("date-picker", "date"),
+    State("data-plot", "figure"),
+    State("legend-display-picker", "value")],
 )
-def export_csv(n_clicks, date):
+def export_csv(n_clicks, date,plot,sensor_tag):
     if n_clicks > 0:
         data_source = get_sensor_datafile_name(date)
         df = get_and_condition_data(date)
         out_filename = data_source.split("_")[0] + "_data.csv"
-        return send_data_frame(df.to_csv, out_filename, index=False)
+
+        visible_traces = []
+        for key in plot['data']:
+            if(key.get('visible') == 1 or str(key.get('visible')) == 'None'):
+                visible_traces.append(key.get(sensor_tag))
+        df = df[df[sensor_tag].isin(visible_traces)]
+
+        return send_data_frame(df.sort_values(by=['ip','datetime']).to_csv, out_filename, index=False)
+
 
 @app.callback(
     Output("download-stats", "data"),
