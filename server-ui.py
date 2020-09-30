@@ -22,7 +22,6 @@ import dash_daq as daq
 from cassandra.cluster import Cluster
 from cassandra.query import SimpleStatement
 from cassandra.query import dict_factory
-import json
 
 
 server = Flask(__name__)
@@ -175,7 +174,12 @@ app.layout = html.Div(
                 )
             ],
             style={"padding-left": "100px", "padding-top": "50px","margin-bottom":"50px"},
-        ),        
+        ),
+        dcc.Loading(
+            id="loading-spin",
+            type="circle",
+            children=[    
+                    
         dcc.Tabs(
         children=[
             dcc.Tab(
@@ -422,6 +426,7 @@ app.layout = html.Div(
                 ]
             )
         ]),
+            ]),
     dcc.ConfirmDialogProvider(
             children=html.Button(
                 "Contact Us",
@@ -501,6 +506,7 @@ def export_csv(n_clicks, date,plot,sensor_tag,df_save):
         df = df[df[sensor_tag].isin(visible_traces)]
 
         return send_data_frame(df.sort_values(by=['ip','datetime']).to_csv, out_filename, index=False)
+    return dash.no_update
 
 
 @app.callback(
@@ -619,13 +625,13 @@ def update_output(
     [
         Input("parameter-picker", "value"),
         Input("legend-display-picker", "value"),
-        Input("date-picker-range", "start_date"),
         Input("date-picker-range", "end_date"),
         Input("sample-time-interval-range", "value"),
     ],
+    [State("date-picker-range", "start_date")]
 )
 def update_output_dateRange(
-    parameter, sensor_tag, start_date,end_date,sample_interval
+    parameter, sensor_tag,end_date,sample_interval,start_date
 ):
 
     fig_range = go.Figure()
@@ -747,7 +753,7 @@ def get_and_condition_data(date, start_date = '', end_date = ''):
     Query sensors data on with specified date/date range
     """
     stmt_time_interval = session.prepare("select ip,datetime,co2_level,dew_point,name,relative_humidity,temperature from sensors_data where date >= ? AND date <= ? ALLOW FILTERING")
-    stmt_date_single = session.prepare("select * from sensors_data where date = ?")
+    stmt_date_single = session.prepare("select ip,datetime,co2_level,dew_point,name,relative_humidity,temperature from sensors_data where date = ?")
 
     if(start_date == end_date):
         df = session.execute(stmt_date_single,[date])._current_rows
