@@ -22,6 +22,7 @@ import dash_daq as daq
 from cassandra.cluster import Cluster
 from cassandra.query import SimpleStatement
 from cassandra.query import dict_factory
+import json
 
 
 server = Flask(__name__)
@@ -293,7 +294,8 @@ app.layout = html.Div(
                         ],
                         style_table={"margin-left": "5%", "width": "45%"},
                         style_cell={"text-align": "left", "width": "150px"},
-                    )
+                    ),
+                    html.Div(id='plot-intermediate-value', style={'display': 'none'})
                 ]
             ),
             dcc.Tab(
@@ -415,7 +417,8 @@ app.layout = html.Div(
                                 "margin-bottom":"20px"
                             },
                         ),
-                    Download(id="download-range")
+                    Download(id="download-range"),
+                    html.Div(id='plot-intermediate-value-range', style={'display': 'none'})
                 ]
             )
         ]),
@@ -461,12 +464,13 @@ def update_current_date(n_intervals):
     [State("date-picker-range", "start_date"),
     State("date-picker-range", "end_date"),
     State("data-plot-range", "figure"),
-    State("legend-display-picker", "value")],
+    State("legend-display-picker", "value"),
+    State('plot-intermediate-value-range', 'children')],
 )
-def export_range_csv(n_clicks, start_date,end_date,plot,sensor_tag):
+def export_range_csv(n_clicks, start_date,end_date,plot,sensor_tag,df_save):
     if n_clicks > 0:
-        df = get_and_condition_data(start_date,start_date,end_date)
         out_filename = str(start_date)+ "_"+ str(end_date) + "_data.csv"
+        df = pd.read_json(df_save, orient='split')
 
         visible_traces = []
         for key in plot['data']:
@@ -481,14 +485,15 @@ def export_range_csv(n_clicks, start_date,end_date,plot,sensor_tag):
     [Input("export_btn", "n_clicks")],
     [State("date-picker", "date"),
     State("data-plot", "figure"),
-    State("legend-display-picker", "value")],
+    State("legend-display-picker", "value"),
+    State('plot-intermediate-value', 'children')],
 )
-def export_csv(n_clicks, date,plot,sensor_tag):
+def export_csv(n_clicks, date,plot,sensor_tag,df_save):
     if n_clicks > 0:
         data_source = get_sensor_datafile_name(date)
-        df = get_and_condition_data(date)
+        df = pd.read_json(df_save, orient='split')
         out_filename = data_source.split("_")[0] + "_data.csv"
-
+        
         visible_traces = []
         for key in plot['data']:
             if(key.get('visible') == 1 or str(key.get('visible')) == 'None'):
@@ -519,6 +524,7 @@ def export_stats(n_clicks, date, parameter):
         Output("stats-plot", "figure"),
         Output("table-alive", "data"),
         Output('sensors-alive', 'children'),
+        Output('plot-intermediate-value', 'children')
     ],
     [
         Input("parameter-picker", "value"),
@@ -602,12 +608,14 @@ def update_output(
     table_sensors_alive = build_sensors_status()
     sensors_alive = get_sensors_status()
     
+    df_save = df_time_filt.to_json(date_format='iso', orient='split')
 
-    return fig_main, parameter, table_data, fig_stats, table_sensors_alive, sensors_alive
+    return fig_main, parameter, table_data, fig_stats, table_sensors_alive, sensors_alive,df_save
 
 
 @app.callback(
-        Output("data-plot-range", "figure"),
+        [Output("data-plot-range", "figure"),
+        Output('plot-intermediate-value-range', 'children')],
     [
         Input("parameter-picker", "value"),
         Input("legend-display-picker", "value"),
@@ -650,8 +658,10 @@ def update_output_dateRange(
     fig_range.update_layout(
             {"yaxis": {"title": {"text": units[parameter]}}}
         )
+    
+    df_save = df_range.to_json(date_format='iso', orient='split')
 
-    return fig_range
+    return fig_range,df_save
 
 def get_sensors_status():
     sensors_csv = data_file_location + "/sensors_status.csv"

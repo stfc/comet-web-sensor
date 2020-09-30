@@ -45,7 +45,6 @@ class StatsWriter:
     def _get_dataframe_from_db(self, date):
         stmt_date_single = self._session.prepare("select * from sensors_data where date = ?")
         df = self._session.execute(stmt_date_single,[date])._current_rows
-        print(df)
         return df
 
     def _write_dataframe_to_db(self,df):
