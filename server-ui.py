@@ -552,20 +552,21 @@ app.layout = html.Div(
                                 dcc.Graph(
                                     id="data-plot-T-vs-CO2", style={"height": 600}
                                 ),
-                                # html.Button(
-                                #     "Export Data",
-                                #     id="export-btn-T-vs-CO2",
-                                #     n_clicks=0,
-                                #     style={
-                                #         "padding": "0px",
-                                #         "width": "100px",
-                                #         "margin-top": "33px",
-                                #         "margin-bottom": "20px",
-                                #     },
-                                # ),
-                                # Download(id="download-range"),
+                                html.Button(
+                                    "Export Data",
+                                    id="export_btn-TempVsCO2",
+                                    n_clicks=0,
+                                    style={
+                                        "padding": "0px",
+                                        "width": "100px",
+                                        "margin-top": "33px",
+                                        "margin-bottom": "20px",
+                                    },
+                                ),
+                                Download(id="download-TempVsCO2"),
                                 html.Div(
-                                    id="plot-T-vs-CO2", style={"display": "none"},
+                                    id="plot-intermediate-TempVsCO2",
+                                    style={"display": "none"},
                                 ),
                             ],
                         ),
@@ -608,6 +609,32 @@ def update_current_date(n_intervals):
     else:
         return dash.no_update
 
+
+@app.callback(
+    Output("download-TempVsCO2", "data"),
+    [Input("export_btn-TempVsCO2", "n_clicks")],
+    [
+        State("date-range-T-vs-CO2", "start_date"),
+        State("date-range-T-vs-CO2", "end_date"),
+        State("data-plot-T-vs-CO2", "figure"),
+        State("legend-display-picker", "value"),
+        State("plot-intermediate-TempVsCO2", "children"),
+    ],
+)
+def export_TempVsCO2_csv(n_clicks, start_date, end_date, plot, sensor_tag, df_save):
+    if n_clicks > 0:
+        out_filename = str(start_date) + "_" + str(end_date) + "_data.csv"
+        df = pd.read_json(df_save, orient="split")
+
+        visible_traces = []
+        for key in plot["data"]:
+            if key.get("visible") == 1 or str(key.get("visible")) == "None":
+                visible_traces.append(key.get(sensor_tag))
+        df = df[df[sensor_tag].isin(visible_traces)]
+
+        return send_data_frame(
+            df.sort_values(by=["ip", "datetime"]).to_csv, out_filename, index=False
+        )
 
 @app.callback(
     Output("download-range", "data"),
@@ -677,13 +704,16 @@ def export_stats(n_clicks, date, parameter):
 
 
 @app.callback(
-    [Output("data-plot-T-vs-CO2", "figure")],
+    [
+        Output("data-plot-T-vs-CO2", "figure"),
+        Output("plot-intermediate-TempVsCO2", "children")
+    ],
     [
         Input("date-range-T-vs-CO2", "end_date"),
         Input("sample-time-interval-range", "value"),
         Input("legend-display-picker", "value"),
     ],
-    [State("date-range-T-vs-C02", "start_date")],
+    [State("date-range-T-vs-CO2", "start_date")],
 )
 def update_temp_co2_graph(end_date, sample_interval, sensor_tag, start_date):
     fig = go.Figure()
@@ -694,21 +724,29 @@ def update_temp_co2_graph(end_date, sample_interval, sensor_tag, start_date):
         return []
 
     sample_interval = int(sample_interval)
+    symbols_shape = ["circle", "diamond-open", "triangle-up","circle-open"]
+    count_set = shape_index = 0
 
     for key, grp in df_range.groupby([sensor_tag]):
         fig.add_scattergl(
-            x=grp["Temperature"][::sample_interval],
-            y=grp["CO2 level"][::sample_interval],
+            x=grp["temperature"][::sample_interval],
+            y=grp["co2_level"][::sample_interval],
             name=key,
             mode="markers",
             connectgaps=False,
+            marker_symbol=symbols_shape[shape_index],
         )
+        count_set += 1
+        if count_set % len(px.colors.qualitative.Plotly) == 0:
+            shape_index = (shape_index + 1) % len(symbols_shape)
 
     fig.update_layout(
         {"yaxis": {"title": {"text": "ppm"}}}, {"xaxis": {"title": {"text": "C"}}}
     )
 
-    return fig
+    df_save = df_range.to_json(date_format="iso", orient="split")
+
+    return fig, df_save
 
 
 @app.callback(
