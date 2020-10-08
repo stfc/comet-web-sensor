@@ -681,10 +681,11 @@ def export_stats(n_clicks, date, parameter):
     [
         Input("date-range-T-vs-CO2", "end_date"),
         Input("sample-time-interval-range", "value"),
+        Input("legend-display-picker", "value"),
     ],
     [State("date-range-T-vs-C02", "start_date")],
 )
-def update_temp_co2_graph(end_date, sample_interval, start_date):
+def update_temp_co2_graph(end_date, sample_interval, sensor_tag, start_date):
     fig = go.Figure()
     try:
         df_range = get_and_condition_data(start_date, start_date, end_date)
