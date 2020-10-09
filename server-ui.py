@@ -40,6 +40,7 @@ session.default_fetch_size = None
 app = dash.Dash(
     __name__,
     server=server,
+    title="CLF CO2 Sensors",
     external_stylesheets=[
         dbc.themes.BOOTSTRAP,
         "https://codepen.io/chriddyp/pen/bWLwgP.css",
@@ -67,6 +68,12 @@ units = {
     "relative_humidity": "%",
     "dew_point": "C",
     "co2_level": "ppm",
+}
+page_title = {
+    "temperature": "Temperature",
+    "relative_humidity": "Relative Humidity",
+    "dew_point": "Dew point",
+    "co2_level": "CO2 levels",
 }
 
 
@@ -860,7 +867,7 @@ def update_output(
 
     return (
         fig_main,
-        parameter,
+        page_title[parameter],
         table_data,
         fig_stats,
         table_sensors_alive,
