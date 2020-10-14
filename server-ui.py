@@ -608,11 +608,16 @@ def update_max_date(n_invervals):
 
 
 @app.callback(
-    Output("date-picker", "date"), [Input("interval-component", "n_intervals")]
+    [
+        Output("date-picker", "date"),
+        Output("date-picker-range", "max_date_allowed"),
+        Output("date-range-T-vs-CO2", "max_date_allowed")
+    ],
+    [Input("interval-component", "n_intervals")]
 )
 def update_current_date(n_intervals):
     if n_intervals == 0:
-        return datetime.date.today()
+        return datetime.date.today(),datetime.date.today(),datetime.date.today()
     else:
         return dash.no_update
 
