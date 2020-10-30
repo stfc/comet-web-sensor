@@ -22,20 +22,14 @@ import dash_daq as daq
 from cassandra.cluster import Cluster
 from cassandra.query import SimpleStatement
 from cassandra.query import dict_factory
+from DAO import SensorsDAO
 
 
 server = Flask(__name__)
 
-cluster = Cluster()
-session = cluster.connect("sensors")
+# Initiate Database object
+db = SensorsDAO()
 
-
-def pandas_factory(colnames, rows):
-    return pd.DataFrame(rows, columns=colnames)
-
-
-session.row_factory = pandas_factory
-session.default_fetch_size = None
 
 app = dash.Dash(
     __name__,
@@ -1035,33 +1029,21 @@ def get_and_condition_data(date, start_date="", end_date=""):
     """
     Query sensors data on with specified date/date range
     """
-    stmt_time_interval = session.prepare(
-        "select ip,datetime,co2_level,dew_point,name,relative_humidity,temperature from sensors_data where date >= ? AND date <= ? ALLOW FILTERING"
-    )
-    stmt_date_single = session.prepare(
-        "select ip,datetime,co2_level,dew_point,name,relative_humidity,temperature from sensors_data where date = ?"
-    )
 
     if start_date == end_date:
-        df = session.execute(stmt_date_single, [date])._current_rows
+        df = db.get_data_single(date)
 
     else:
-        df = session.execute(stmt_time_interval, [start_date, end_date])._current_rows
+        df = db.get_data_range(start_date, end_date)
 
     return df
 
 
 def get_and_condition_stats(source):
-
-    stmt_list = {
-        "co2_level": "select * from sensors.co2_level",
-        "dew_point": "select * from sensors.dew_point",
-        "relative_humidity": "select * from sensors.relative_humidity",
-        "temperature": "select * from sensors.temperature",
-    }
-
-    df = session.execute(stmt_list[source])._current_rows
-    return df
+    """
+    Query sensors statistics data
+    """
+    return db.get_stats(source)
 
 
 def get_sensor_datafile_name(date):
