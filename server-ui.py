@@ -780,9 +780,12 @@ def update_temp_co2_graph(end_date, sample_interval, sensor_tag, start_date):
         Input("sample-time-interval", "value"),
         Input("data-time-interval", "value"),
     ],
+    [
+        State("data-plot", "figure")
+    ]
 )
 def update_output(
-    parameter, sensor_tag, n_intervals, date, n_clicks, sample_interval, data_interval
+    parameter, sensor_tag, n_intervals, date, n_clicks, sample_interval, data_interval, plot_state
 ):
 
     fig_main = go.Figure()
@@ -806,6 +809,13 @@ def update_output(
     count_set = 0
     shape_index = 0
     sample_interval = int(sample_interval)
+    visible_traces = []
+
+    ## Reserve plot selection
+    if(date!=str(datetime.date.today())):
+        for key in plot_state["data"]:
+            if key.get("visible") == 1 or str(key.get("visible")) == "None":
+                visible_traces.append(key.get(str(sensor_tag)))
 
     for key, grp in df_time_filt.groupby([sensor_tag]):
         fig_main.add_scattergl(
@@ -815,6 +825,7 @@ def update_output(
             mode="lines + markers",
             connectgaps=True,
             line=dict(dash=line_shape[shape_index]),
+            visible =  True if (key in visible_traces or len(visible_traces) == 0) else 'legendonly'
         )
         count_set += 1
         if count_set % len(px.colors.qualitative.Plotly) == 0:
@@ -892,10 +903,13 @@ def update_output(
         Input("date-picker-range", "end_date"),
         Input("sample-time-interval-range", "value"),
     ],
-    [State("date-picker-range", "start_date")],
+    [
+        State("date-picker-range", "start_date"),
+        State("data-plot-range", "figure")
+        ],
 )
 def update_output_dateRange(
-    parameter, sensor_tag, end_date, sample_interval, start_date
+    parameter, sensor_tag, end_date, sample_interval, start_date,plot_data
 ):
 
     fig_range = go.Figure()
@@ -911,6 +925,12 @@ def update_output_dateRange(
     count_set = 0
     shape_index = 0
     sample_interval = int(sample_interval)
+    visible_traces = []
+
+    if(start_date!=str(datetime.date.today())):
+        for key in plot_data["data"]:
+            if key.get("visible") == 1 or str(key.get("visible")) == "None":
+                visible_traces.append(key.get(str(sensor_tag)))
 
     for key, grp in df_range.groupby([sensor_tag]):
         fig_range.add_scattergl(
@@ -920,6 +940,7 @@ def update_output_dateRange(
             mode="lines + markers",
             connectgaps=True,
             line=dict(dash=line_shape[shape_index]),
+            visible =  True if (key in visible_traces or len(visible_traces) == 0) else 'legendonly'
         )
         count_set += 1
         if count_set % len(px.colors.qualitative.Plotly) == 0:
