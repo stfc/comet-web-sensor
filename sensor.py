@@ -120,7 +120,7 @@ class Sensor:
     
     @property
     def latest_db_data(self):
-        if(self._latest_data["Temperature"] == "-" or self._latest_data["Temperature"] == "connection" or self._latest_data["Temperature"] == 0):
+        if any(v in self._latest_data.values() for v in ['-', 'connection', 0]):
             return []
             
         data_list = []

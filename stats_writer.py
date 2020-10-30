@@ -16,10 +16,10 @@ class StatsWriter:
         self._db = SensorsDAO()
 
         self._insert_stmt = {
-                "co2_level": self._db.getsession().prepare("INSERT INTO co2_level (date,ip,name,peak,mean,std ) values ( ?,?,?,?,?,?)"),
-                "dew_point": self._db.getsession().prepare("INSERT INTO dew_point (date,ip,name,peak,mean,std ) values ( ?,?,?,?,?,?)"),
-                "relative_humidity": self._db.getsession().prepare("INSERT INTO relative_humidity (date,ip,name,peak,mean,std ) values ( ?,?,?,?,?,?)"),
-                "temperature": self._db.getsession().prepare("INSERT INTO temperature (date,ip,name,peak,mean,std ) values ( ?,?,?,?,?,?)") }
+                "co2_level": self._db.get_session().prepare("INSERT INTO co2_level (date,ip,name,peak,mean,std ) values ( ?,?,?,?,?,?)"),
+                "dew_point": self._db.get_session().prepare("INSERT INTO dew_point (date,ip,name,peak,mean,std ) values ( ?,?,?,?,?,?)"),
+                "relative_humidity": self._db.get_session().prepare("INSERT INTO relative_humidity (date,ip,name,peak,mean,std ) values ( ?,?,?,?,?,?)"),
+                "temperature": self._db.get_session().prepare("INSERT INTO temperature (date,ip,name,peak,mean,std ) values ( ?,?,?,?,?,?)") }
         
 
     def _read_config_file(self, config_file):
@@ -41,14 +41,14 @@ class StatsWriter:
         return df
 
     def _get_dataframe_from_db(self, date):
-        stmt_date_single = self._db.getsession().prepare("select * from sensors_data where date = ?")
-        df = self._db.getsession().execute(stmt_date_single,[date])._current_rows
+        stmt_date_single = self._db.get_session().prepare("select * from sensors_data where date = ?")
+        df = self._db.get_session().execute(stmt_date_single,[date])._current_rows
         return df
 
     def _write_dataframe_to_db(self,df):
         for i in self._insert_stmt:
             for key,grp in df.groupby(['ip','date','name']):
-                self._db.getsession().execute(self._insert_stmt[i],[key[1],key[0],key[2],np.max(grp[i]),np.mean(grp[i]),np.std(grp[i]) ] )
+                self._db.get_session().execute(self._insert_stmt[i],[key[1],key[0],key[2],np.max(grp[i]),np.mean(grp[i]),np.std(grp[i]) ] )
 
     def start(self):
         while True:

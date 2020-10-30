@@ -10,32 +10,32 @@ class SensorsDAO:
         self.cluster = None
         self.session = None
         self.keyspace = 'sensors'
-        self.createsession()
+        self.create_session()
 
 
     def __del__(self):
         self.cluster.shutdown()
 
-    def createsession(self):
+    def create_session(self):
         self.cluster = Cluster()
         self.session = self.cluster.connect(self.keyspace)
         self.session.row_factory = pandas_factory
         self.session.default_fetch_size = None
 
-    def getsession(self):
+    def get_session(self):
         return self.session
 
     def get_data_single(self, date):
-        stmt_date_single = self.getsession().prepare(
+        stmt_date_single = self.get_session().prepare(
         "select ip,datetime,co2_level,dew_point,name,relative_humidity,temperature from sensors_data where date = ?")
 
-        return self.getsession().execute(stmt_date_single, [date])._current_rows
+        return self.get_session().execute(stmt_date_single, [date])._current_rows
         
     def get_data_range(self, start_date, end_date):
-        stmt_time_interval = self.getsession().prepare(
+        stmt_time_interval = self.get_session().prepare(
         "select ip,datetime,co2_level,dew_point,name,relative_humidity,temperature from sensors_data where date >= ? AND date <= ? ALLOW FILTERING")
 
-        return self.getsession().execute(stmt_time_interval, [start_date,end_date])._current_rows
+        return self.get_session().execute(stmt_time_interval, [start_date,end_date])._current_rows
 
     def get_stats(self,source):
         stmt_list = {
@@ -45,7 +45,7 @@ class SensorsDAO:
         "temperature": "select * from sensors.temperature",
         }
 
-        return self.getsession().execute(stmt_list[source])._current_rows
+        return self.get_session().execute(stmt_list[source])._current_rows
 
 def pandas_factory(colnames, rows):
         return pd.DataFrame(rows, columns=colnames)
