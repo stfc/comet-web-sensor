@@ -8,6 +8,7 @@ import socket
 import threading
 import http.client
 from pytz import timezone
+from cassandra.cluster import Cluster
 
 
 class Sensor:
@@ -77,9 +78,9 @@ class Sensor:
             xml = self._read_xml_from_web()
             # xml = self._read_xml_from_file()
             if not self._data_received:
-                data = self._sub_data_with_error("connection")
+                data = self._sub_data_with_error(0)
             elif not self._xml_is_valid(xml):
-                data = self._sub_data_with_error("invalid")
+                data = self._sub_data_with_error(0)
             else:
                 data = {
                     child.findtext("name"): child.findtext("aval")
@@ -116,6 +117,23 @@ class Sensor:
     def latest_csv_data(self):
         data_list = [self._latest_data[df] for df in self._data_fields]
         return ",".join(data_list) + "\n"
+    
+    @property
+    def latest_db_data(self):
+        if any(v in self._latest_data.values() for v in ['-', 'connection', 0]):
+            return []
+            
+        data_list = []
+        data_list.append(self._ip)
+        data_list.append(self._name)
+        data_list.append(dt.strptime(self._latest_data["Time"], "%m/%d/%Y %H:%M:%S"))
+        data_list.append(dt.strptime(self._latest_data["Time"], "%m/%d/%Y %H:%M:%S"))
+        data_list.append(float(self._latest_data["Temperature"]))
+        data_list.append(float(self._latest_data["Relative humidity"]))
+        data_list.append(float(self._latest_data["Dew point"]))
+        data_list.append(float(self._latest_data["CO2 level"]))
+
+        return data_list
 
     @property
     def latest_data(self):

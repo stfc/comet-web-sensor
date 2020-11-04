@@ -19,12 +19,22 @@ import dash_table
 import math
 from configparser import ConfigParser
 import dash_daq as daq
+from cassandra.cluster import Cluster
+from cassandra.query import SimpleStatement
+from cassandra.query import dict_factory
+from DAO import SensorsDAO
 
 
 server = Flask(__name__)
+
+# Initiate Database object
+db = SensorsDAO()
+
+
 app = dash.Dash(
     __name__,
     server=server,
+    title="CLF CO2 Sensors",
     external_stylesheets=[
         dbc.themes.BOOTSTRAP,
         "https://codepen.io/chriddyp/pen/bWLwgP.css",
@@ -42,16 +52,22 @@ work_day_start = cp.get("settings", "work_day_start")
 work_day_end = cp.get("settings", "work_day_end")
 
 stats_file_dict = {
-    "Temperature": "Temp_stats.csv",
-    "Relative humidity": "Humidity_stats.csv",
-    "Dew point": "Dewpoint_stats.csv",
-    "CO2 level": "CO2_stats.csv",
+    "temperature": "Temp_stats.csv",
+    "relative_humidity": "Humidity_stats.csv",
+    "dew_point": "Dewpoint_stats.csv",
+    "co2_level": "CO2_stats.csv",
 }
 units = {
-    "Temperature": "C",
-    "Relative humidity": "%",
-    "Dew point": "C",
-    "CO2 level": "ppm",
+    "temperature": "C",
+    "relative_humidity": "%",
+    "dew_point": "C",
+    "co2_level": "ppm",
+}
+page_title = {
+    "temperature": "Temperature",
+    "relative_humidity": "Relative Humidity",
+    "dew_point": "Dew point",
+    "co2_level": "CO2 levels",
 }
 
 
@@ -66,24 +82,30 @@ app.layout = html.Div(
                     width="10%",
                 ),
                 dbc.Col(
-                    children=[html.H1(
-                        "THIS IS DEVELOPMENT BRANCH IT CAN BE SWITCHED OFF ANYTIME",
-                        style={
-                            "text-align": "left",
-                            "font-family": "Trocchi",
-                            "color": "red",
-                            "width": "50%",
-                            "font-size": "20px",
-                        },
-                    ),
-                    html.Label(['FOR STABLE VERSION\t', html.A('CLICK HERE', href='http://130.246.71.15:8050')],
-                    style={
-                            "text-align": "left",
-                            "font-family": "Trocchi",
-                            "color": "red",
-                            "width": "50%",
-                            "font-size": "20px",
-                        },),
+                    children=[
+                        html.H1(
+                            "THIS IS DEVELOPMENT BRANCH IT CAN BE SWITCHED OFF ANYTIME",
+                            style={
+                                "text-align": "left",
+                                "font-family": "Trocchi",
+                                "color": "red",
+                                "width": "50%",
+                                "font-size": "20px",
+                            },
+                        ),
+                        html.Label(
+                            [
+                                "FOR STABLE VERSION\t",
+                                html.A("CLICK HERE", href="http://130.246.71.15:8050"),
+                            ],
+                            style={
+                                "text-align": "left",
+                                "font-family": "Trocchi",
+                                "color": "red",
+                                "width": "50%",
+                                "font-size": "20px",
+                            },
+                        ),
                     ]
                 ),
                 dbc.Col(
@@ -114,12 +136,12 @@ app.layout = html.Div(
                         dcc.Dropdown(
                             id="parameter-picker",
                             options=[
-                                {"label": "CO2 level", "value": "CO2 level"},
-                                {"label": "Temperature", "value": "Temperature"},
-                                {"label": "Dew point", "value": "Dew point"},
-                                {"label": "Humidity", "value": "Relative humidity"},
+                                {"label": "CO2 level", "value": "co2_level"},
+                                {"label": "Temperature", "value": "temperature"},
+                                {"label": "Dew point", "value": "dew_point"},
+                                {"label": "Humidity", "value": "relative_humidity"},
                             ],
-                            value="CO2 level",
+                            value="co2_level",
                             style={"width": "150px", "height": "50%"},
                         ),
                     ],
@@ -152,190 +174,406 @@ app.layout = html.Div(
                     width="auto",
                 ),
                 dbc.Col(
-                    id = "sensors-alive",
-                    width="auto",
-                    style = {
-                        "margin-top": "27px",
-                    }
-                )
+                    id="sensors-alive", width="auto", style={"margin-top": "27px",}
+                ),
             ],
-            style={"padding-left": "100px", "padding-top": "50px","margin-bottom":"50px"},
-        ),        
-        dcc.Tabs(
-        children=[
-            dcc.Tab(
-                label='Daily',
-                children=[
-                    dbc.Row(
-                    [
-                        dbc.Col(
-                            children=[
-                                html.P(
-                                    "Sample interval",
-                                    style={
-                                        "font-size": "16px",
-                                        "font-weight": "bold",
-                                        "color": "#7c795d",
-                                    },
-                                ),
-                                dcc.Dropdown(
-                                    id="sample-time-interval",
-                                    options=[
-                                        {"label": "1 minute", "value": "1"},
-                                        {"label": "5 minutes", "value": "5"},
-                                        {"label": "10 minutes", "value": "10"},
-                                    ],
-                                    value="5",
-                                    style={
-                                        "width": "150px",
-                                        "height": "50%",
-                                        "mergin-left": "50px",
-                                    },
-                                ),
-                            ],
-                            width="auto",
-                        ),
-                        dbc.Col(
-                            children=[
-                                html.P(
-                                    "Time interval",
-                                    style={
-                                        "font-size": "16px",
-                                        "font-weight": "bold",
-                                        "color": "#7c795d",
-                                    },
-                                ),
-                                dcc.Dropdown(
-                                    id="data-time-interval",
-                                    options=[
-                                        {"label": "24 hours", "value": "00:00,23:59"},
-                                        {"label": "6:00 - 18:00", "value": "06:00,18:00"},
-                                    ],
-                                    value="00:00,23:59",
-                                    style={
-                                        "width": "150px",
-                                        "height": "50%",
-                                        "mergin-left": "50px",
-                                    },
-                                ),
-                            ],
-                            width="auto",
-                        ),
-                        dbc.Col(
-                            children=[
-                                html.P(
-                                    "Date",
-                                    style={
-                                        "font-size": "16px",
-                                        "font-weight": "bold",
-                                        "color": "#7c795d",
-                                    },
-                                ),
-                                dcc.DatePickerSingle(
-                                    id="date-picker",
-                                    min_date_allowed=dt(2020, 7, 20),
-                                    max_date_allowed=datetime.date.today(),
-                                    date=datetime.date.today(),
-                                ),
-                            ],
-                            width="auto",
-                        ),
-                        dbc.Col(
-                            html.Button(
-                                "Refresh",
-                                id="refresh-btn",
-                                n_clicks=0,
-                                style={
-                                    "padding": "0px",
-                                    "width": "100px",
-                                    "margin-top": "33px",
-                                },
-                            ),
-                            width="auto",
-                        )
-                    ],
-            style={"padding-left": "100px", "padding-top": "20px"},
+            style={
+                "padding-left": "100px",
+                "padding-top": "50px",
+                "margin-bottom": "50px",
+            },
         ),
-                    dcc.Graph(id="data-plot", style={"height": 600}),
-                    html.Button(
-                            "Export Data",
-                            id="export_btn",
-                            n_clicks=0,
-                            style={
-                                "padding": "0px",
-                                "width": "100px",
-                                "margin-top": "33px",
-                                "margin-bottom":"20px"
-                            },
-                        ),
-                    Download(id="download"),
-                    dash_table.DataTable(
-                        id="table",
-                        columns=[
-                            {"id": "name", "name": "Name"},
-                            {"id": "peak", "name": "Peak"},
-                            {"id": "avg", "name": "Average"},
-                            {"id": "std", "name": "Std"},
-                        ],
-                        style_table={"margin-left": "5%", "width": "45%"},
-                        style_cell={"text-align": "left", "width": "150px"},
-                    )
-                ]
-            ),
-            dcc.Tab(
-                label='Statistics',
-                children=[
-                    dcc.Graph(id="stats-plot", style={"height": 900}),
-                    html.Button(
-                            "Export Data",
-                            id="export_stats-btn",
-                            n_clicks=0,
-                            style={
-                                "padding": "0px",
-                                "margin-left":"20px",
-                                "width": "140px",
-                                "margin-top": "33px",
-                                "margin-bottom":"20px"
-                            },
-                        ),
-                        Download(id="download-stats")
-                ]
-            ),
-            dcc.Tab(
-                label='Sensors Status',
-
-                children = [
-                    dash_table.DataTable(
-                            id="table-alive",
-                            columns=[
-                                {"id": "name", "name": "Name"},
-                                {"id": "timestamp", "name": "Timestamp"},
-                                {"id": "timeout", "name": "timeout"},
+        dcc.Loading(
+            id="loading-spin",
+            type="circle",
+            children=[
+                dcc.Tabs(
+                    children=[
+                        dcc.Tab(
+                            label="Daily",
+                            children=[
+                                dbc.Row(
+                                    [
+                                        dbc.Col(
+                                            children=[
+                                                html.P(
+                                                    "Sample interval",
+                                                    style={
+                                                        "font-size": "16px",
+                                                        "font-weight": "bold",
+                                                        "color": "#7c795d",
+                                                    },
+                                                ),
+                                                dcc.Dropdown(
+                                                    id="sample-time-interval",
+                                                    options=[
+                                                        {
+                                                            "label": "1 minute",
+                                                            "value": "1",
+                                                        },
+                                                        {
+                                                            "label": "5 minutes",
+                                                            "value": "5",
+                                                        },
+                                                        {
+                                                            "label": "10 minutes",
+                                                            "value": "10",
+                                                        },
+                                                    ],
+                                                    value="5",
+                                                    style={
+                                                        "width": "150px",
+                                                        "height": "50%",
+                                                        "mergin-left": "50px",
+                                                    },
+                                                ),
+                                            ],
+                                            width="auto",
+                                        ),
+                                        dbc.Col(
+                                            children=[
+                                                html.P(
+                                                    "Time interval",
+                                                    style={
+                                                        "font-size": "16px",
+                                                        "font-weight": "bold",
+                                                        "color": "#7c795d",
+                                                    },
+                                                ),
+                                                dcc.Dropdown(
+                                                    id="data-time-interval",
+                                                    options=[
+                                                        {
+                                                            "label": "24 hours",
+                                                            "value": "00:00:00,23:59:00",
+                                                        },
+                                                        {
+                                                            "label": "6:00 - 18:00",
+                                                            "value": "06:00:00,18:00:00",
+                                                        },
+                                                    ],
+                                                    value="00:00:00,23:59:00",
+                                                    style={
+                                                        "width": "150px",
+                                                        "height": "50%",
+                                                        "mergin-left": "50px",
+                                                    },
+                                                ),
+                                            ],
+                                            width="auto",
+                                        ),
+                                        dbc.Col(
+                                            children=[
+                                                html.P(
+                                                    "Date",
+                                                    style={
+                                                        "font-size": "16px",
+                                                        "font-weight": "bold",
+                                                        "color": "#7c795d",
+                                                    },
+                                                ),
+                                                dcc.DatePickerSingle(
+                                                    id="date-picker",
+                                                    min_date_allowed=dt(2020, 7, 20),
+                                                    max_date_allowed=datetime.date.today(),
+                                                    date=datetime.date.today(),
+                                                ),
+                                            ],
+                                            width="auto",
+                                        ),
+                                        dbc.Col(
+                                            html.Button(
+                                                "Refresh",
+                                                id="refresh-btn",
+                                                n_clicks=0,
+                                                style={
+                                                    "padding": "0px",
+                                                    "width": "100px",
+                                                    "margin-top": "33px",
+                                                },
+                                            ),
+                                            width="auto",
+                                        ),
+                                    ],
+                                    style={
+                                        "padding-left": "100px",
+                                        "padding-top": "20px",
+                                    },
+                                ),
+                                dcc.Graph(id="data-plot", style={"height": 600}),
+                                html.Button(
+                                    "Export Data",
+                                    id="export_btn",
+                                    n_clicks=0,
+                                    style={
+                                        "padding": "0px",
+                                        "width": "100px",
+                                        "margin-top": "33px",
+                                        "margin-bottom": "20px",
+                                    },
+                                ),
+                                Download(id="download"),
+                                dash_table.DataTable(
+                                    id="table",
+                                    columns=[
+                                        {"id": "name", "name": "Name"},
+                                        {"id": "peak", "name": "Peak"},
+                                        {"id": "avg", "name": "Average"},
+                                        {"id": "std", "name": "Std"},
+                                    ],
+                                    style_table={"margin-left": "5%", "width": "45%"},
+                                    style_cell={"text-align": "left", "width": "150px"},
+                                ),
+                                html.Div(
+                                    id="plot-intermediate-value",
+                                    style={"display": "none"},
+                                ),
                             ],
-                            style_table={"margin-left": "5%", "width": "20%","margin-top":"20px"},
-                            style_cell={"text-align": "left"},
-                            hidden_columns = ['timeout'],
-                            css=[{"selector": ".show-hide", "rule": "display: none"}],
-                            style_data_conditional=[
-                            {
-                                'if': {
-                                    'filter_query': '{timeout} eq "valid"',
-                                    'column_id': 'timestamp'
-                                },
-                                'backgroundColor': '#98ff98'
-                            },
-                            {
-                                'if': {
-                                    'filter_query': '{timeout} eq "invalid"',
-                                    'column_id': 'timestamp'
-                                },
-                                'backgroundColor': '#ff4040'
-                            }
-                        ]
-                        )
-                ])
-        ]),
-    dcc.ConfirmDialogProvider(
+                        ),
+                        dcc.Tab(
+                            label="Statistics",
+                            children=[
+                                dcc.Graph(id="stats-plot", style={"height": 900}),
+                                html.Button(
+                                    "Export Data",
+                                    id="export_stats-btn",
+                                    n_clicks=0,
+                                    style={
+                                        "padding": "0px",
+                                        "margin-left": "20px",
+                                        "width": "140px",
+                                        "margin-top": "33px",
+                                        "margin-bottom": "20px",
+                                    },
+                                ),
+                                Download(id="download-stats"),
+                            ],
+                        ),
+                        dcc.Tab(
+                            label="Sensors Status",
+                            children=[
+                                dash_table.DataTable(
+                                    id="table-alive",
+                                    columns=[
+                                        {"id": "name", "name": "Name"},
+                                        {"id": "timestamp", "name": "Timestamp"},
+                                        {"id": "timeout", "name": "timeout"},
+                                    ],
+                                    style_table={
+                                        "margin-left": "5%",
+                                        "width": "20%",
+                                        "margin-top": "20px",
+                                    },
+                                    style_cell={"text-align": "left"},
+                                    hidden_columns=["timeout"],
+                                    css=[
+                                        {
+                                            "selector": ".show-hide",
+                                            "rule": "display: none",
+                                        }
+                                    ],
+                                    style_data_conditional=[
+                                        {
+                                            "if": {
+                                                "filter_query": '{timeout} eq "valid"',
+                                                "column_id": "timestamp",
+                                            },
+                                            "backgroundColor": "#98ff98",
+                                        },
+                                        {
+                                            "if": {
+                                                "filter_query": '{timeout} eq "invalid"',
+                                                "column_id": "timestamp",
+                                            },
+                                            "backgroundColor": "#ff4040",
+                                        },
+                                    ],
+                                )
+                            ],
+                        ),
+                        dcc.Tab(
+                            label="Historical Range",
+                            children=[
+                                dbc.Row(
+                                    [
+                                        dbc.Col(
+                                            children=[
+                                                html.P(
+                                                    "Sample interval",
+                                                    style={
+                                                        "font-size": "16px",
+                                                        "font-weight": "bold",
+                                                        "color": "#7c795d",
+                                                    },
+                                                ),
+                                                dcc.Dropdown(
+                                                    id="sample-time-interval-range",
+                                                    options=[
+                                                        {
+                                                            "label": "1 minute",
+                                                            "value": "1",
+                                                        },
+                                                        {
+                                                            "label": "5 minutes",
+                                                            "value": "5",
+                                                        },
+                                                        {
+                                                            "label": "10 minutes",
+                                                            "value": "10",
+                                                        },
+                                                    ],
+                                                    value="5",
+                                                    style={
+                                                        "width": "150px",
+                                                        "height": "50%",
+                                                        "mergin-left": "50px",
+                                                    },
+                                                ),
+                                            ],
+                                            width="auto",
+                                        ),
+                                        dbc.Col(
+                                            children=[
+                                                html.P(
+                                                    "Date",
+                                                    style={
+                                                        "font-size": "16px",
+                                                        "font-weight": "bold",
+                                                        "color": "#7c795d",
+                                                    },
+                                                ),
+                                                dcc.DatePickerRange(
+                                                    id="date-picker-range",
+                                                    min_date_allowed=dt(2020, 7, 20),
+                                                    max_date_allowed=datetime.date.today(),
+                                                    start_date=datetime.date.today(),
+                                                    end_date=datetime.date.today(),
+                                                    show_outside_days=True,
+                                                    minimum_nights=0,
+                                                ),
+                                            ],
+                                            width="auto",
+                                        ),
+                                    ],
+                                    style={
+                                        "padding-left": "100px",
+                                        "padding-top": "20px",
+                                    },
+                                ),
+                                dcc.Graph(id="data-plot-range", style={"height": 600}),
+                                html.Button(
+                                    "Export Data",
+                                    id="export_btn-range",
+                                    n_clicks=0,
+                                    style={
+                                        "padding": "0px",
+                                        "width": "100px",
+                                        "margin-top": "33px",
+                                        "margin-bottom": "20px",
+                                    },
+                                ),
+                                Download(id="download-range"),
+                                html.Div(
+                                    id="plot-intermediate-value-range",
+                                    style={"display": "none"},
+                                ),
+                            ],
+                        ),
+                        dcc.Tab(
+                            label="Temp vs. CO2",
+                            children=[
+                                dbc.Row(
+                                    [
+                                        dbc.Col(
+                                            children=[
+                                                html.P(
+                                                    "Sample interval",
+                                                    style={
+                                                        "font-size": "16px",
+                                                        "font-weight": "bold",
+                                                        "color": "#7c795d",
+                                                    },
+                                                ),
+                                                dcc.Dropdown(
+                                                    id="data-interval-T-vs-CO2",
+                                                    options=[
+                                                        {
+                                                            "label": "1 minute",
+                                                            "value": "1",
+                                                        },
+                                                        {
+                                                            "label": "5 minutes",
+                                                            "value": "5",
+                                                        },
+                                                        {
+                                                            "label": "10 minutes",
+                                                            "value": "10",
+                                                        },
+                                                    ],
+                                                    value="5",
+                                                    style={
+                                                        "width": "150px",
+                                                        "height": "50%",
+                                                        "mergin-left": "50px",
+                                                    },
+                                                ),
+                                            ],
+                                            width="auto",
+                                        ),
+                                        dbc.Col(
+                                            children=[
+                                                html.P(
+                                                    "Date",
+                                                    style={
+                                                        "font-size": "16px",
+                                                        "font-weight": "bold",
+                                                        "color": "#7c795d",
+                                                    },
+                                                ),
+                                                dcc.DatePickerRange(
+                                                    id="date-range-T-vs-CO2",
+                                                    min_date_allowed=dt(2020, 7, 20),
+                                                    max_date_allowed=datetime.date.today(),
+                                                    start_date=datetime.date.today(),
+                                                    end_date=datetime.date.today(),
+                                                    show_outside_days=True,
+                                                    minimum_nights=0,
+                                                ),
+                                            ],
+                                            width="auto",
+                                        ),
+                                    ],
+                                    style={
+                                        "padding-left": "100px",
+                                        "padding-top": "20px",
+                                    },
+                                ),
+                                dcc.Graph(
+                                    id="data-plot-T-vs-CO2", style={"height": 600}
+                                ),
+                                html.Button(
+                                    "Export Data",
+                                    id="export_btn-TempVsCO2",
+                                    n_clicks=0,
+                                    style={
+                                        "padding": "0px",
+                                        "width": "100px",
+                                        "margin-top": "33px",
+                                        "margin-bottom": "20px",
+                                    },
+                                ),
+                                Download(id="download-TempVsCO2"),
+                                html.Div(
+                                    id="plot-intermediate-TempVsCO2",
+                                    style={"display": "none"},
+                                ),
+                            ],
+                        ),
+                    ]
+                ),
+            ],
+        ),
+        dcc.ConfirmDialogProvider(
             children=html.Button(
                 "Contact Us",
                 style={"bottom": "5%", "margin-left": "20px", "margin-top": "20px"},
@@ -362,32 +600,105 @@ def update_max_date(n_invervals):
 
 
 @app.callback(
-    Output("date-picker", "date"), [Input("interval-component", "n_intervals")]
+    [
+        Output("date-picker", "date"),
+        Output("date-picker-range", "max_date_allowed"),
+        Output("date-range-T-vs-CO2", "max_date_allowed")
+    ],
+    [Input("interval-component", "n_intervals")]
 )
 def update_current_date(n_intervals):
     if n_intervals == 0:
-        return datetime.date.today()
+        return datetime.date.today(),datetime.date.today(),datetime.date.today()
     else:
         return dash.no_update
 
 
 @app.callback(
+    Output("download-TempVsCO2", "data"),
+    [Input("export_btn-TempVsCO2", "n_clicks")],
+    [
+        State("date-range-T-vs-CO2", "start_date"),
+        State("date-range-T-vs-CO2", "end_date"),
+        State("data-plot-T-vs-CO2", "figure"),
+        State("legend-display-picker", "value"),
+        State("plot-intermediate-TempVsCO2", "children"),
+    ],
+)
+def export_TempVsCO2_csv(n_clicks, start_date, end_date, plot, sensor_tag, df_save):
+    if n_clicks > 0:
+        out_filename = str(start_date) + "_" + str(end_date) + "_data.csv"
+        df = pd.read_json(df_save, orient="split")
+
+        visible_traces = []
+        for key in plot["data"]:
+            if key.get("visible") == 1 or str(key.get("visible")) == "None":
+                visible_traces.append(key.get(sensor_tag))
+        df = df[df[sensor_tag].isin(visible_traces)]
+
+        return send_data_frame(
+            df.sort_values(by=["ip", "datetime"]).to_csv, out_filename, index=False
+        )
+
+@app.callback(
+    Output("download-range", "data"),
+    [Input("export_btn-range", "n_clicks")],
+    [
+        State("date-picker-range", "start_date"),
+        State("date-picker-range", "end_date"),
+        State("data-plot-range", "figure"),
+        State("legend-display-picker", "value"),
+        State("plot-intermediate-value-range", "children"),
+    ],
+)
+def export_range_csv(n_clicks, start_date, end_date, plot, sensor_tag, df_save):
+    if n_clicks > 0:
+        out_filename = str(start_date) + "_" + str(end_date) + "_data.csv"
+        df = pd.read_json(df_save, orient="split")
+
+        visible_traces = []
+        for key in plot["data"]:
+            if key.get("visible") == 1 or str(key.get("visible")) == "None":
+                visible_traces.append(key.get(sensor_tag))
+        df = df[df[sensor_tag].isin(visible_traces)]
+
+        return send_data_frame(
+            df.sort_values(by=["ip", "datetime"]).to_csv, out_filename, index=False
+        )
+
+
+@app.callback(
     Output("download", "data"),
     [Input("export_btn", "n_clicks")],
-    [State("date-picker", "date")],
+    [
+        State("date-picker", "date"),
+        State("data-plot", "figure"),
+        State("legend-display-picker", "value"),
+        State("plot-intermediate-value", "children"),
+    ],
 )
-def export_csv(n_clicks, date):
+def export_csv(n_clicks, date, plot, sensor_tag, df_save):
     if n_clicks > 0:
         data_source = get_sensor_datafile_name(date)
-        df = get_and_condition_data(data_source)
+        df = pd.read_json(df_save, orient="split")
         out_filename = data_source.split("_")[0] + "_data.csv"
-        return send_data_frame(df.to_csv, out_filename, index=False)
+
+        visible_traces = []
+        for key in plot["data"]:
+            if key.get("visible") == 1 or str(key.get("visible")) == "None":
+                visible_traces.append(key.get(sensor_tag))
+        df = df[df[sensor_tag].isin(visible_traces)]
+
+        return send_data_frame(
+            df.sort_values(by=["ip", "datetime"]).to_csv, out_filename, index=False
+        )
+    return dash.no_update
+
 
 @app.callback(
     Output("download-stats", "data"),
     [Input("export_stats-btn", "n_clicks")],
-    [State("date-picker", "date"),
-    State("parameter-picker", "value")],
+    [State("date-picker", "date"), State("parameter-picker", "value")],
 )
 def export_stats(n_clicks, date, parameter):
     if n_clicks > 0:
@@ -398,12 +709,59 @@ def export_stats(n_clicks, date, parameter):
 
 @app.callback(
     [
+        Output("data-plot-T-vs-CO2", "figure"),
+        Output("plot-intermediate-TempVsCO2", "children")
+    ],
+    [
+        Input("date-range-T-vs-CO2", "end_date"),
+        Input("sample-time-interval-range", "value"),
+        Input("legend-display-picker", "value"),
+    ],
+    [State("date-range-T-vs-CO2", "start_date")],
+)
+def update_temp_co2_graph(end_date, sample_interval, sensor_tag, start_date):
+    fig = go.Figure()
+    try:
+        df_range = get_and_condition_data(start_date, start_date, end_date)
+    except FileNotFoundError:
+        # TODO let user know data doesn't exist for this date
+        return []
+
+    sample_interval = int(sample_interval)
+    symbols_shape = ["circle", "diamond-open", "triangle-up","circle-open"]
+    count_set = shape_index = 0
+
+    for key, grp in df_range.groupby([sensor_tag]):
+        fig.add_scattergl(
+            x=grp["temperature"][::sample_interval],
+            y=grp["co2_level"][::sample_interval],
+            name=key,
+            mode="markers",
+            connectgaps=False,
+            marker_symbol=symbols_shape[shape_index],
+        )
+        count_set += 1
+        if count_set % len(px.colors.qualitative.Plotly) == 0:
+            shape_index = (shape_index + 1) % len(symbols_shape)
+
+    fig.update_layout(
+        {"yaxis": {"title": {"text": "ppm"}}}, {"xaxis": {"title": {"text": "C"}}}
+    )
+
+    df_save = df_range.to_json(date_format="iso", orient="split")
+
+    return fig, df_save
+
+
+@app.callback(
+    [
         Output("data-plot", "figure"),
         Output("plot-title", "children"),
         Output("table", "data"),
         Output("stats-plot", "figure"),
         Output("table-alive", "data"),
-        Output('sensors-alive', 'children')
+        Output("sensors-alive", "children"),
+        Output("plot-intermediate-value", "children"),
     ],
     [
         Input("parameter-picker", "value"),
@@ -414,9 +772,12 @@ def export_stats(n_clicks, date, parameter):
         Input("sample-time-interval", "value"),
         Input("data-time-interval", "value"),
     ],
+    [
+        State("data-plot", "figure")
+    ]
 )
 def update_output(
-    parameter, sensor_tag, n_intervals, date, n_clicks, sample_interval, data_interval
+    parameter, sensor_tag, n_intervals, date, n_clicks, sample_interval, data_interval, plot_state
 ):
 
     fig_main = go.Figure()
@@ -429,55 +790,78 @@ def update_output(
     )
 
     try:
-        data_source = get_sensor_datafile_name(date)
-        df = get_and_condition_data(data_source)
+        df = get_and_condition_data(date)
     except FileNotFoundError:
         # TODO let user know that data for that day doesn't exist.
         return fig_main, parameter, [], fig_stats
 
     df_time_filt = get_data_in_time_interval(data_interval, df)
-    
-    line_shape = ["solid","dash","dot","dashdot","longdash"]
+
+    line_shape = ["solid", "dash", "dot", "dashdot", "longdash"]
     count_set = 0
     shape_index = 0
+    sample_interval = int(sample_interval)
+    visible_traces = []
+
+    ## Reserve plot selection
+    if(date!=str(datetime.date.today())):
+        for key in plot_state["data"]:
+            if key.get("visible") == 1 or str(key.get("visible")) == "None":
+                visible_traces.append(key.get(str(sensor_tag)))
+
     for key, grp in df_time_filt.groupby([sensor_tag]):
-        sample_interval = int(sample_interval)
         fig_main.add_scattergl(
-            x=grp["Time"][::sample_interval],
+            x=grp["datetime"][::sample_interval],
             y=grp[parameter][::sample_interval],
             name=key,
             mode="lines + markers",
             connectgaps=True,
-            line=dict(dash=line_shape[shape_index])
+            line=dict(dash=line_shape[shape_index]),
+            visible =  True if (key in visible_traces or len(visible_traces) == 0) else 'legendonly'
         )
-        count_set+=1
-        if(count_set % len(px.colors.qualitative.Plotly) == 0):
+        count_set += 1
+        if count_set % len(px.colors.qualitative.Plotly) == 0:
             shape_index = (shape_index + 1) % len(line_shape)
 
     table_data = build_table(df, sensor_tag, parameter)
 
-    stats_file = stats_file_dict[parameter]
-    df_stats = get_and_condition_stats(stats_file)
+    df_stats = get_and_condition_stats(parameter)
 
-    colour_index = 0
-    colour_map = px.colors.qualitative.Light24
+    count_set = shape_index = 0
+
     for key, grp in df_stats.groupby([sensor_tag]):
 
-        colour = colour_map[colour_index]
-
         fig_stats.add_trace(
-            make_scatter(grp["date"], grp["peak"], key, colour, True), row=1, col=1
+            make_scatter(
+                grp["date"].astype(str), grp["peak"], key, line_shape[shape_index], True
+            ),
+            row=1,
+            col=1,
         )
 
         fig_stats.add_trace(
-            make_scatter(grp["date"], grp["mean"], key, colour, False), row=2, col=1
+            make_scatter(
+                grp["date"].astype(str),
+                grp["mean"],
+                key,
+                line_shape[shape_index],
+                False,
+            ),
+            row=2,
+            col=1,
         )
 
         fig_stats.add_trace(
-            make_scatter(grp["date"], grp["std"], key, colour, False), row=3, col=1
+            make_scatter(
+                grp["date"].astype(str), grp["std"], key, line_shape[shape_index], False
+            ),
+            row=3,
+            col=1,
         )
 
-        colour_index = (colour_index + 1) % len(colour_map)
+        count_set += 1
+        if count_set % len(px.colors.qualitative.Plotly) == 0:
+            shape_index = (shape_index + 1) % len(line_shape)
 
     for f in [fig_main, fig_stats]:
         f.update_layout(
@@ -486,10 +870,79 @@ def update_output(
 
     table_sensors_alive = build_sensors_status()
     sensors_alive = get_sensors_status()
-    #sensors_alive_stats = get_sensors_status(1)
-    
 
-    return fig_main, parameter, table_data, fig_stats, table_sensors_alive, sensors_alive
+    df_save = df_time_filt.to_json(date_format="iso", orient="split")
+
+    return (
+        fig_main,
+        page_title[parameter],
+        table_data,
+        fig_stats,
+        table_sensors_alive,
+        sensors_alive,
+        df_save,
+    )
+
+
+@app.callback(
+    [
+        Output("data-plot-range", "figure"),
+        Output("plot-intermediate-value-range", "children"),
+    ],
+    [
+        Input("parameter-picker", "value"),
+        Input("legend-display-picker", "value"),
+        Input("date-picker-range", "end_date"),
+        Input("sample-time-interval-range", "value"),
+    ],
+    [
+        State("date-picker-range", "start_date"),
+        State("data-plot-range", "figure")
+        ],
+)
+def update_output_dateRange(
+    parameter, sensor_tag, end_date, sample_interval, start_date,plot_data
+):
+
+    fig_range = go.Figure()
+
+    try:
+        df_range = get_and_condition_data(start_date, start_date, end_date)
+        df_range = df_range.sort_values(by=["datetime"])
+    except FileNotFoundError:
+        # TODO let user know that data for that day doesn't exist.
+        return []
+
+    line_shape = ["solid", "dash", "dot", "dashdot", "longdash"]
+    count_set = 0
+    shape_index = 0
+    sample_interval = int(sample_interval)
+    visible_traces = []
+
+    if(start_date!=str(datetime.date.today())):
+        for key in plot_data["data"]:
+            if key.get("visible") == 1 or str(key.get("visible")) == "None":
+                visible_traces.append(key.get(str(sensor_tag)))
+
+    for key, grp in df_range.groupby([sensor_tag]):
+        fig_range.add_scattergl(
+            x=grp["datetime"][::sample_interval],
+            y=grp[parameter][::sample_interval],
+            name=key,
+            mode="lines + markers",
+            connectgaps=True,
+            line=dict(dash=line_shape[shape_index]),
+            visible =  True if (key in visible_traces or len(visible_traces) == 0) else 'legendonly'
+        )
+        count_set += 1
+        if count_set % len(px.colors.qualitative.Plotly) == 0:
+            shape_index = (shape_index + 1) % len(line_shape)
+
+    fig_range.update_layout({"yaxis": {"title": {"text": units[parameter]}}})
+
+    df_save = df_range.to_json(date_format="iso", orient="split")
+
+    return fig_range, df_save
 
 
 def get_sensors_status():
@@ -497,30 +950,27 @@ def get_sensors_status():
     sensors_status = pd.read_csv(sensors_csv)
     led_color = "green"
     name = "Sensors Connected"
-    
-    for i in range (len(sensors_status)):
-        if(sensors_status.loc[i, "timeout"] == "invalid"):
+
+    for i in range(len(sensors_status)):
+        if sensors_status.loc[i, "timeout"] == "invalid":
             led_color = "red"
             name = "Some Sensors Disconnected"
 
-    led = daq.Indicator(
-        labelPosition = "bottom",
-        color = led_color,
-        label = name
-        )
+    led = daq.Indicator(labelPosition="bottom", color=led_color, label=name)
 
     return led
 
-def make_scatter(x_vals, y_vals, key, colour, leg):
+
+def make_scatter(x_vals, y_vals, key, line_shape, leg):
     return go.Scatter(
         x=x_vals,
         y=y_vals,
         name=key,
         mode="lines + markers",
-        marker=dict(color=colour),
         connectgaps=False,
         legendgroup=key,
         showlegend=leg,
+        line=dict(dash=line_shape),
     )
 
 
@@ -536,13 +986,12 @@ def setup_graph_title(title_string):
 
 def get_data_in_time_interval(data_interval, df):
     start_time, end_time = data_interval.split(",")
-    df = df.set_index("Time").between_time(start_time, end_time).reset_index()
+    df = df.set_index("datetime").between_time(start_time, end_time).reset_index()
     return df
 
 
 def build_table(df, sensor_tag, parameter):
-    df = df.set_index("Time")
-    df = df.between_time(work_day_start, work_day_end)
+    df = df.set_index("datetime")
     table_data = []
     for key, grp in df.groupby([sensor_tag]):
         if math.isnan(grp[parameter].mean()):
@@ -557,48 +1006,42 @@ def build_table(df, sensor_tag, parameter):
         )
     return table_data
 
+
 def build_sensors_status():
     sensors_csv = data_file_location + "/sensors_status.csv"
     sensors_status = pd.read_csv(sensors_csv)
     table_data_alive = []
-    for i in range (len(sensors_status)):
+    for i in range(len(sensors_status)):
         table_data_alive.append(
             {
                 "name": sensors_status.loc[i, "name"],
-                "timestamp":sensors_status.loc[i, "timestamp"],
-                "timeout":sensors_status.loc[i, "timeout"],
+                "timestamp": sensors_status.loc[i, "timestamp"],
+                "timeout": sensors_status.loc[i, "timeout"],
             }
         )
 
     return table_data_alive
 
-def get_and_condition_data(source):
-    df = pd.read_csv(
-        source,
-        dtype={
-            "Temperature": "float",
-            "Relative humidity": "float",
-            "Dew point": "float",
-            "CO2 level": "float",
-        },
-        na_values=["connection", "-"],
-        parse_dates=["Time"],
-        infer_datetime_format=True,
-        cache_dates=True,
-    )
+
+def get_and_condition_data(date, start_date="", end_date=""):
+    """
+    Query sensors data on with specified date/date range
+    """
+
+    if start_date == end_date:
+        df = db.get_data_single(date)
+
+    else:
+        df = db.get_data_range(start_date, end_date)
+
     return df
 
 
 def get_and_condition_stats(source):
-    filename = data_file_location + os.sep + source
-    df = pd.read_csv(
-        filename,
-        dtype={"peak": "float", "mean": "float", "std": "float"},
-        parse_dates=["date"],
-        infer_datetime_format=True,
-        cache_dates=True,
-    )
-    return df
+    """
+    Query sensors statistics data
+    """
+    return db.get_stats(source)
 
 
 def get_sensor_datafile_name(date):
