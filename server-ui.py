@@ -19,9 +19,6 @@ import dash_table
 import math
 from configparser import ConfigParser
 import dash_daq as daq
-from cassandra.cluster import Cluster
-from cassandra.query import SimpleStatement
-from cassandra.query import dict_factory
 from DAO import SensorsDAO
 
 
@@ -721,11 +718,12 @@ def export_stats(n_clicks, date, parameter):
 )
 def update_temp_co2_graph(end_date, sample_interval, sensor_tag, start_date):
     fig = go.Figure()
-    try:
-        df_range = get_and_condition_data(start_date, start_date, end_date)
-    except FileNotFoundError:
-        # TODO let user know data doesn't exist for this date
-        return []
+    
+    df_range = get_and_condition_data(start_date, start_date, end_date)
+
+    # Data validation
+    if(len(df_range) == 0):
+        return dash.no_update
 
     sample_interval = int(sample_interval)
     symbols_shape = ["circle", "diamond-open", "triangle-up","circle-open"]
@@ -789,11 +787,11 @@ def update_output(
         vertical_spacing=0.05,
     )
 
-    try:
-        df = get_and_condition_data(date)
-    except FileNotFoundError:
-        # TODO let user know that data for that day doesn't exist.
-        return fig_main, parameter, [], fig_stats
+    df = get_and_condition_data(date)
+    
+    # Data validation
+    if(len(df) == 0):
+        return dash.no_update
 
     df_time_filt = get_data_in_time_interval(data_interval, df)
 
@@ -906,12 +904,13 @@ def update_output_dateRange(
 
     fig_range = go.Figure()
 
-    try:
-        df_range = get_and_condition_data(start_date, start_date, end_date)
-        df_range = df_range.sort_values(by=["datetime"])
-    except FileNotFoundError:
-        # TODO let user know that data for that day doesn't exist.
-        return []
+    df_range = get_and_condition_data(start_date, start_date, end_date)
+
+    # Data validation
+    if(len(df_range) == 0):
+        return dash.no_update
+
+    df_range = df_range.sort_values(by=["datetime"])
 
     line_shape = ["solid", "dash", "dot", "dashdot", "longdash"]
     count_set = 0
@@ -1029,7 +1028,7 @@ def get_and_condition_data(date, start_date="", end_date=""):
     """
 
     if start_date == end_date:
-        df = db.get_data_single(date)
+        df = db.get_data_single_spCol(date)
 
     else:
         df = db.get_data_range(start_date, end_date)

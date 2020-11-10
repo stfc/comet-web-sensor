@@ -5,7 +5,6 @@ import os, glob
 from pathlib import Path
 import numpy as np
 import time
-from cassandra.cluster import Cluster
 from DAO import SensorsDAO
 
 
@@ -14,13 +13,6 @@ class StatsWriter:
         self._read_config_file(config_file)
         self._update_interval = update_interval
         self._db = SensorsDAO()
-
-        self._insert_stmt = {
-                "co2_level": self._db.get_session().prepare("INSERT INTO co2_level (date,ip,name,peak,mean,std ) values ( ?,?,?,?,?,?)"),
-                "dew_point": self._db.get_session().prepare("INSERT INTO dew_point (date,ip,name,peak,mean,std ) values ( ?,?,?,?,?,?)"),
-                "relative_humidity": self._db.get_session().prepare("INSERT INTO relative_humidity (date,ip,name,peak,mean,std ) values ( ?,?,?,?,?,?)"),
-                "temperature": self._db.get_session().prepare("INSERT INTO temperature (date,ip,name,peak,mean,std ) values ( ?,?,?,?,?,?)") }
-        
 
     def _read_config_file(self, config_file):
         cp = ConfigParser()
@@ -41,24 +33,13 @@ class StatsWriter:
         return df
 
     def _get_dataframe_from_db(self, date):
-        stmt_date_single = self._db.get_session().prepare("select * from sensors_data where date = ?")
-        df = self._db.get_session().execute(stmt_date_single,[date])._current_rows
-        return df
-
-    def _write_dataframe_to_db(self,df):
-        for i in self._insert_stmt:
-            for key,grp in df.groupby(['ip','date','name']):
-                self._db.get_session().execute(self._insert_stmt[i],[key[1],key[0],key[2],np.max(grp[i]),np.mean(grp[i]),np.std(grp[i]) ] )
+        return self._db.get_data_single(date)
 
     def start(self):
         while True:
             stats_data = self._process_stats_data()
-            self._write_dataframe_to_db(stats_data)
+            self._db.insert_stats(stats_data)
             time.sleep(self._update_interval)
-
-
-def pandas_factory(colnames, rows):
-    return pd.DataFrame(rows, columns=colnames)
 
 
 if __name__ == "__main__":
