@@ -946,15 +946,17 @@ def update_output_dateRange(
 
 
 def get_sensors_status():
-    sensors_csv = data_file_location + "/sensors_status.csv"
-    sensors_status = pd.read_csv(sensors_csv)
+    #sensors_csv = data_file_location + "/sensors_status.csv"
+    #sensors_status = pd.read_csv(sensors_csv)
+    sensors_status = db.get_sensor_status()
     led_color = "green"
     name = "Sensors Connected"
 
     for i in range(len(sensors_status)):
-        if sensors_status.loc[i, "timeout"] == "invalid":
+        if not sensors_status.loc[i, "online"]:
             led_color = "red"
             name = "Some Sensors Disconnected"
+            break
 
     led = daq.Indicator(labelPosition="bottom", color=led_color, label=name)
 
@@ -1008,15 +1010,16 @@ def build_table(df, sensor_tag, parameter):
 
 
 def build_sensors_status():
-    sensors_csv = data_file_location + "/sensors_status.csv"
-    sensors_status = pd.read_csv(sensors_csv)
+    #sensors_csv = data_file_location + "/sensors_status.csv"
+    #sensors_status = pd.read_csv(sensors_csv)
+    sensors_status = db.get_sensor_status()
     table_data_alive = []
     for i in range(len(sensors_status)):
         table_data_alive.append(
             {
                 "name": sensors_status.loc[i, "name"],
-                "timestamp": sensors_status.loc[i, "timestamp"],
-                "timeout": sensors_status.loc[i, "timeout"],
+                "timestamp": sensors_status.loc[i, "last_read"],
+                "online": sensors_status.loc[i, "online"],
             }
         )
 
