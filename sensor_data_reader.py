@@ -64,6 +64,13 @@ class SensorDataReader:
                     f.write(s.name+","+str(s.time_of_last_successful_read)+","+"invalid\n")
                 else:
                     f.write(s.name+","+str(s.time_of_last_successful_read)+","+"valid\n")
+    
+    def log_sensor_status(self, session, sensor):
+        sensorStatus = session.prepare("INSERT INTO sensors (ip, name, last_read, online) VALUES (?,?,?,?)")
+        if sensor.seconds_since_successful_read > self._timeout_value:
+            session.execute(sensorStatus, (sensor.ip, sensor.name, sensor._last_successful_read, False))
+        else:
+            session.execute(sensorStatus, (sensor.ip, sensor.name, sensor._last_successful_read, True))
 
     def db_connect(self):
         cluster = Cluster()
@@ -89,7 +96,7 @@ class SensorDataReader:
                 if(len(s.latest_db_data) != 0):
                     #f.write(s.ip + "," + s.name + "," + s.latest_csv_data)
                     db_session.execute(stmt, s.latest_db_data)
-
+                self.log_sensor_status(db_session, s)
             #self._check_sensor_status()
             time.sleep(self._sample_interval)
 
