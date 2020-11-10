@@ -27,7 +27,7 @@ class SensorsDAO:
 
     def get_data_single(self, date):
         stmt_date_single = self.get_session().prepare(
-        "select ip,datetime,co2_level,dew_point,name,relative_humidity,temperature from sensors_data where date = ?")
+        "select ip,datetime,co2_level,dew_point,name,relative_humidity,temperature from sensors_data where date = ? ALLOW FILTERING")
 
         return self.get_session().execute(stmt_date_single, [date])._current_rows
         
@@ -46,6 +46,9 @@ class SensorsDAO:
         }
 
         return self.get_session().execute(stmt_list[source])._current_rows
+
+    def get_sensor_status(self):
+        return self.get_session().execute("SELECT name, last_read, online FROM sensors")._current_rows
 
 def pandas_factory(colnames, rows):
         return pd.DataFrame(rows, columns=colnames)
