@@ -1,5 +1,12 @@
 CREATE KEYSPACE IF NOT EXISTS sensors WITH replication = {'class': 'SimpleStrategy', 'replication_factor' : 1} ;
 USE sensors;
+CREATE TABLE IF NOT EXISTS sensors (
+	ip INET
+, name TEXT
+,	last_read TIMESTAMP
+,	online BOOLEAN
+,	PRIMARY KEY(ip)
+);
 CREATE TABLE IF NOT EXISTS sensors_data (
 	ip INET
 , name TEXT
