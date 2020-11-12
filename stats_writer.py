@@ -28,7 +28,9 @@ class StatsWriter:
         return df
 
     def _filter_dataframe_time_window(self, df):
-        df = df.set_index("datetime").between_time(self._work_day_start, self._work_day_end).reset_index()
+        # check if dataframe is not empty
+        if(len(df)!=0):
+            df = df.set_index("datetime").between_time(self._work_day_start, self._work_day_end).reset_index()
 
         return df
 
