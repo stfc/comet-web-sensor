@@ -164,7 +164,7 @@ class SensorsDAO:
         try:
             if(self.connection_status == False):
                 self.create_session()
-            self.get_session().execute(SensorsDAO.insert_sensor_status_stmt,data ] )
+            self.get_session().execute(SensorsDAO.insert_sensor_status_stmt,data )
         except:
             print("Sensor status data Insertion failed!")
 
