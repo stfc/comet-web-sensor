@@ -16,10 +16,11 @@ CREATE TABLE IF NOT EXISTS sensors_data (
 , relative_humidity FLOAT
 , dew_point FLOAT
 , co2_level FLOAT
-, PRIMARY KEY(ip, datetime)
+, PRIMARY KEY((ip, date), datetime)
 );
+CREATE INDEX info_date ON sensors_data (date);
 CREATE TABLE IF NOT EXISTS co2_level (
-	date TIMESTAMP
+	date DATE
 , ip INET
 , name TEXT
 , peak FLOAT
@@ -28,7 +29,7 @@ CREATE TABLE IF NOT EXISTS co2_level (
 , PRIMARY KEY(date, ip)
 );
 CREATE TABLE IF NOT EXISTS dew_point (
-	date TIMESTAMP
+	date DATE
 , ip INET
 , name TEXT
 , peak FLOAT
@@ -37,7 +38,7 @@ CREATE TABLE IF NOT EXISTS dew_point (
 , PRIMARY KEY(date, ip)
 );
 CREATE TABLE IF NOT EXISTS relative_humidity (
-	date TIMESTAMP
+	date DATE
 , ip INET
 , name TEXT
 , peak FLOAT
@@ -46,7 +47,7 @@ CREATE TABLE IF NOT EXISTS relative_humidity (
 , PRIMARY KEY(date, ip)
 );
 CREATE TABLE IF NOT EXISTS temperature (
-	date TIMESTAMP
+	date DATE
 , ip INET
 , name TEXT
 , peak FLOAT
