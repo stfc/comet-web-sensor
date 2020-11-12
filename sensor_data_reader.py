@@ -65,6 +65,12 @@ class SensorDataReader:
                     f.write(s.name+","+str(s.time_of_last_successful_read)+","+"invalid\n")
                 else:
                     f.write(s.name+","+str(s.time_of_last_successful_read)+","+"valid\n")
+    
+    def log_sensor_status(self, sensor):
+        if sensor.seconds_since_successful_read > self._timeout_value:
+            self._db.insert_sensor_status([sensor.ip, sensor.name, sensor._last_successful_read, False])
+        else:
+            self._db.insert_sensor_status([sensor.ip, sensor.name, sensor._last_successful_read, True])
 
 
     def start(self):
@@ -74,7 +80,7 @@ class SensorDataReader:
             for s in self._sensors:
                 if(len(s.latest_db_data) != 0):
                     self._db.insert_data(s.latest_db_data)
-
+                self.log_sensor_status(s)
             time.sleep(self._sample_interval)
 
 

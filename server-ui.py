@@ -19,6 +19,9 @@ import dash_table
 import math
 from configparser import ConfigParser
 import dash_daq as daq
+from cassandra.cluster import Cluster
+from cassandra.query import SimpleStatement
+from cassandra.query import dict_factory
 from DAO import SensorsDAO
 
 
@@ -718,12 +721,11 @@ def export_stats(n_clicks, date, parameter):
 )
 def update_temp_co2_graph(end_date, sample_interval, sensor_tag, start_date):
     fig = go.Figure()
-    
-    df_range = get_and_condition_data(start_date, start_date, end_date)
-
-    # Data validation
-    if(len(df_range) == 0):
-        return dash.no_update
+    try:
+        df_range = get_and_condition_data(start_date, start_date, end_date)
+    except FileNotFoundError:
+        # TODO let user know data doesn't exist for this date
+        return []
 
     sample_interval = int(sample_interval)
     symbols_shape = ["circle", "diamond-open", "triangle-up","circle-open"]
@@ -787,11 +789,11 @@ def update_output(
         vertical_spacing=0.05,
     )
 
-    df = get_and_condition_data(date)
-    
-    # Data validation
-    if(len(df) == 0):
-        return dash.no_update
+    try:
+        df = get_and_condition_data(date)
+    except FileNotFoundError:
+        # TODO let user know that data for that day doesn't exist.
+        return fig_main, parameter, [], fig_stats
 
     df_time_filt = get_data_in_time_interval(data_interval, df)
 
@@ -904,13 +906,12 @@ def update_output_dateRange(
 
     fig_range = go.Figure()
 
-    df_range = get_and_condition_data(start_date, start_date, end_date)
-
-    # Data validation
-    if(len(df_range) == 0):
-        return dash.no_update
-
-    df_range = df_range.sort_values(by=["datetime"])
+    try:
+        df_range = get_and_condition_data(start_date, start_date, end_date)
+        df_range = df_range.sort_values(by=["datetime"])
+    except FileNotFoundError:
+        # TODO let user know that data for that day doesn't exist.
+        return []
 
     line_shape = ["solid", "dash", "dot", "dashdot", "longdash"]
     count_set = 0
@@ -945,15 +946,15 @@ def update_output_dateRange(
 
 
 def get_sensors_status():
-    sensors_csv = data_file_location + "/sensors_status.csv"
-    sensors_status = pd.read_csv(sensors_csv)
+    sensors_status = db.get_sensor_status()
     led_color = "green"
     name = "Sensors Connected"
 
     for i in range(len(sensors_status)):
-        if sensors_status.loc[i, "timeout"] == "invalid":
+        if not sensors_status.loc[i, "online"]:
             led_color = "red"
             name = "Some Sensors Disconnected"
+            break
 
     led = daq.Indicator(labelPosition="bottom", color=led_color, label=name)
 
@@ -1007,15 +1008,16 @@ def build_table(df, sensor_tag, parameter):
 
 
 def build_sensors_status():
-    sensors_csv = data_file_location + "/sensors_status.csv"
-    sensors_status = pd.read_csv(sensors_csv)
+    #sensors_csv = data_file_location + "/sensors_status.csv"
+    #sensors_status = pd.read_csv(sensors_csv)
+    sensors_status = db.get_sensor_status()
     table_data_alive = []
     for i in range(len(sensors_status)):
         table_data_alive.append(
             {
                 "name": sensors_status.loc[i, "name"],
-                "timestamp": sensors_status.loc[i, "timestamp"],
-                "timeout": sensors_status.loc[i, "timeout"],
+                "timestamp": sensors_status.loc[i, "last_read"],
+                "online": sensors_status.loc[i, "online"],
             }
         )
 
@@ -1028,7 +1030,7 @@ def get_and_condition_data(date, start_date="", end_date=""):
     """
 
     if start_date == end_date:
-        df = db.get_data_single_spCol(date)
+        df = db.get_data_single(date)
 
     else:
         df = db.get_data_range(start_date, end_date)
@@ -1051,4 +1053,3 @@ def get_sensor_datafile_name(date):
 
 if __name__ == "__main__":
     app.run_server(port=8051, debug=True, host="0.0.0.0")
-

@@ -1,6 +1,7 @@
 pandas
 numpy
 dash
+dash-daq
 flask
 plotly
 dash_core_components

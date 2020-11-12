@@ -14,6 +14,8 @@ class SensorsDAO:
     get_data_single_stmt_spCol = None #specific columns
     get_data_range_stmt = None
     get_stats_stmt = {}
+    get_sensor_status_stmt = None
+    insert_sensor_status_stmt = None
 
     def __init__(self):
         self.cluster = None
@@ -65,6 +67,9 @@ class SensorsDAO:
             "relative_humidity": "select * from sensors.relative_humidity",
             "temperature": "select * from sensors.temperature",
             }
+
+        SensorsDAO.get_sensor_status_stmt = self.get_session().prepare("SELECT name, last_read, online FROM sensors_status")
+        SensorsDAO.insert_sensor_status_stmt = self.get_session().prepare("INSERT INTO sensors_status (ip, name, last_read, online) VALUES (?,?,?,?)")
 
     def get_session(self):
         return self.session
@@ -141,6 +146,27 @@ class SensorsDAO:
                     self.get_session().execute(SensorsDAO.insert_stats_stmt[i],[key[1],key[0],key[2],np.max(grp[i]),np.mean(grp[i]),np.std(grp[i]) ] )
         except:
             print("Stats data Insertion failed!")
+
+    def get_sensor_status(self):
+        """
+        Get sensor status
+        """
+        try:
+            return self.get_session().execute(SensorsDAO.get_sensor_status_stmt)._current_rows
+        except:
+            print("Sensors status data query failed!")
+            return []
+
+    def insert_sensor_status(self,data):
+        """
+        Insert Sensor status data into DB
+        """
+        try:
+            if(self.connection_status == False):
+                self.create_session()
+            self.get_session().execute(SensorsDAO.insert_sensor_status_stmt,data ] )
+        except:
+            print("Sensor status data Insertion failed!")
 
 def pandas_factory(colnames, rows):
         return pd.DataFrame(rows, columns=colnames)
