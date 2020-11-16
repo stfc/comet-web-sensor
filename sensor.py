@@ -8,7 +8,6 @@ import socket
 import threading
 import http.client
 from pytz import timezone
-from cassandra.cluster import Cluster
 
 
 class Sensor:

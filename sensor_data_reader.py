@@ -5,7 +5,7 @@ from sensor import Sensor
 import smtplib, ssl
 from email.message import EmailMessage
 import sys
-from cassandra.cluster import Cluster
+from DAO import SensorsDAO
 
 if(float(sys.version[:3])<3.7):
     from backports.datetime_fromisoformat import MonkeyPatch
@@ -16,6 +16,7 @@ class SensorDataReader:
     def __init__(self, config_file="config.ini"):
         self._read_config_file(config_file)
         self._sensors = [Sensor(d) for d in self._sensors_details]
+        self._db = SensorsDAO()
 
     def _read_config_file(self, config_file):
         cp = ConfigParser()
@@ -65,39 +66,21 @@ class SensorDataReader:
                 else:
                     f.write(s.name+","+str(s.time_of_last_successful_read)+","+"valid\n")
     
-    def log_sensor_status(self, session, sensor):
-        sensorStatus = session.prepare("INSERT INTO sensors (ip, name, last_read, online) VALUES (?,?,?,?)")
+    def log_sensor_status(self, sensor):
         if sensor.seconds_since_successful_read > self._timeout_value:
-            session.execute(sensorStatus, (sensor.ip, sensor.name, sensor._last_successful_read, False))
+            self._db.insert_sensor_status([sensor.ip, sensor.name, sensor._last_successful_read, False])
         else:
-            session.execute(sensorStatus, (sensor.ip, sensor.name, sensor._last_successful_read, True))
+            self._db.insert_sensor_status([sensor.ip, sensor.name, sensor._last_successful_read, True])
 
-    def db_connect(self):
-        cluster = Cluster()
-        session = cluster.connect('sensors')
-        return session
-
-    def get_insert_stmt(self,session):
-        return session.prepare("INSERT INTO sensors_data (ip,name,date,datetime, temperature , relative_humidity , dew_point , co2_level ) values ( ?,?,?,?,?,?,?,?)")
 
     def start(self):
         self._start_sensors()
 
-        # To be re-structured, kept for testing
-        db_session = self.db_connect()
-        stmt = self.get_insert_stmt(db_session)
-
-        ## Only writes into DB
         while True:
-            #csv_file = self._make_todays_csv_file_if_necessary()
-            #with open(csv_file, "a") as f:
-
             for s in self._sensors:
                 if(len(s.latest_db_data) != 0):
-                    #f.write(s.ip + "," + s.name + "," + s.latest_csv_data)
-                    db_session.execute(stmt, s.latest_db_data)
-                self.log_sensor_status(db_session, s)
-            #self._check_sensor_status()
+                    self._db.insert_data(s.latest_db_data)
+                self.log_sensor_status(s)
             time.sleep(self._sample_interval)
 
 

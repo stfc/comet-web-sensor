@@ -946,8 +946,6 @@ def update_output_dateRange(
 
 
 def get_sensors_status():
-    #sensors_csv = data_file_location + "/sensors_status.csv"
-    #sensors_status = pd.read_csv(sensors_csv)
     sensors_status = db.get_sensor_status()
     led_color = "green"
     name = "Sensors Connected"
@@ -1055,4 +1053,3 @@ def get_sensor_datafile_name(date):
 
 if __name__ == "__main__":
     app.run_server(port=8051, debug=True, host="0.0.0.0")
-
