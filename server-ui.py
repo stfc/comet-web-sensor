@@ -357,7 +357,7 @@ app.layout = html.Div(
                                     columns=[
                                         {"id": "name", "name": "Name"},
                                         {"id": "timestamp", "name": "Timestamp"},
-                                        {"id": "timeout", "name": "timeout"},
+                                        {"id": "online", "name": "online", 'type': 'text'},
                                     ],
                                     style_table={
                                         "margin-left": "5%",
@@ -365,7 +365,7 @@ app.layout = html.Div(
                                         "margin-top": "20px",
                                     },
                                     style_cell={"text-align": "left"},
-                                    hidden_columns=["timeout"],
+                                    hidden_columns=["online"],
                                     css=[
                                         {
                                             "selector": ".show-hide",
@@ -375,14 +375,14 @@ app.layout = html.Div(
                                     style_data_conditional=[
                                         {
                                             "if": {
-                                                "filter_query": '{timeout} eq "valid"',
+                                                "filter_query": '{online} eq "True"',
                                                 "column_id": "timestamp",
                                             },
                                             "backgroundColor": "#98ff98",
                                         },
                                         {
                                             "if": {
-                                                "filter_query": '{timeout} eq "invalid"',
+                                                "filter_query": '{online} eq "False"',
                                                 "column_id": "timestamp",
                                             },
                                             "backgroundColor": "#ff4040",
@@ -1008,16 +1008,14 @@ def build_table(df, sensor_tag, parameter):
 
 
 def build_sensors_status():
-    #sensors_csv = data_file_location + "/sensors_status.csv"
-    #sensors_status = pd.read_csv(sensors_csv)
     sensors_status = db.get_sensor_status()
     table_data_alive = []
     for i in range(len(sensors_status)):
         table_data_alive.append(
             {
                 "name": sensors_status.loc[i, "name"],
-                "timestamp": sensors_status.loc[i, "last_read"],
-                "online": sensors_status.loc[i, "online"],
+                "timestamp": sensors_status.loc[i, "last_read"].strftime("%m/%d/%Y %H:%M:%S"),
+                "online": str(sensors_status.loc[i, "online"]),
             }
         )
 
