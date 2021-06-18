@@ -1,6 +1,6 @@
 CREATE KEYSPACE IF NOT EXISTS sensors WITH replication = {'class': 'SimpleStrategy', 'replication_factor' : 1} ;
 USE sensors;
-CREATE TABLE IF NOT EXISTS sensors (
+CREATE TABLE IF NOT EXISTS sensors_status (
 	ip INET
 , name TEXT
 ,	last_read TIMESTAMP
@@ -18,7 +18,7 @@ CREATE TABLE IF NOT EXISTS sensors_data (
 , co2_level FLOAT
 , PRIMARY KEY((ip, date), datetime)
 );
-CREATE INDEX info_date ON sensors_data (date);
+CREATE INDEX IF NOT EXISTS info_date ON sensors_data (date);
 CREATE TABLE IF NOT EXISTS co2_level (
 	date DATE
 , ip INET

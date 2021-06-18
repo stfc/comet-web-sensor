@@ -5,15 +5,20 @@ STFC-wide project to collect and graph data from Comet T6640 networkable environ
 
 ## Requirements
 - Apache Cassandra data store (https://cassandra.apache.org/download/)
-- Python 3
-- `python3-cassandra`
+- Python3 (3.7+ Preferred)
+- python3-cassandra
 - Pip
 
-## Setup
+## Setup using Makefile
+'Run make'
+- Python requiremetns will be installed in a virtual environment in the TOP directory
+- DB will be install on host
+
+## Setup manual
 1. Install Apache Cassandra
 1. Import schema with `cqlsh --file schema.cql`
 1. Create a Python virtual environment (optional but recommended)
-1. Install Pip requirements with `pip3 install --requirements requirements.txt`
+1. Install Pip requirements with `pip3 install -r requirements.txt`
 
 ## Running Data Collection
 From a shell, execute `./sensor_data.py`. This runs until terminated.

@@ -1,0 +1,31 @@
+VENV_NAME?=PythonEnv
+VENV_ACTIVATE=. $(VENV_NAME)/bin/activate
+PYTHON=${VENV_NAME}/bin/python
+
+CHECK_PYTHON:=$(shell python3 --version 2>/dev/null)
+CHECK_PIP:=$(shell pip3 --version 2>/dev/null)
+
+Check-Python:
+ ifeq (,$(CHECK_PYTHON))
+	$(error "Python3 not installed")
+ else
+	make Check-Pip
+ endif
+
+Check-Pip:
+ ifeq (,$(CHECK_PIP))
+	sudo apt install python3-pip
+ else
+	make venv
+ endif
+
+venv: venv/touchfile
+
+venv/touchfile: requirements.txt
+	test -d $(VENV_NAME) || virtualenv -p python3 $(VENV_NAME)
+	$(VENV_ACTIVATE); pip install -Ur requirements.txt
+	touch  $(VENV_NAME)/touchfile
+
+clean:
+	rm -rf  $(VENV_NAME)
+	find -iname "*.pyc" -delete

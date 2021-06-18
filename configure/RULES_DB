@@ -1,0 +1,30 @@
+CHECK_JAVA:=$(shell java --version 2>/dev/null)
+CHECK_CASSANDRA:=$(shell cqlsh --version 2>/dev/null)
+
+CHECK_DEB: Check-JAVA Check-Cassandra Check-Python
+
+Check-JAVA:
+ ifeq (,$(CHECK_JAVA))
+	make install
+ endif
+ 
+Check-Cassandra:
+ ifeq (,$(CHECK_CASSANDRA))
+	make cassandra
+ else
+	make import_schema
+ endif
+
+java:
+	sudo apt update
+	sudo apt install openjdk-11-jdk -y
+
+cassandra:
+	sudo sh -c 'echo "deb http://www.apache.org/dist/cassandra/debian 40x main" > /etc/apt/sources.list.d/cassandra.list'
+	wget -q -O - https://www.apache.org/dist/cassandra/KEYS | sudo apt-key add -
+	sudo apt update
+	sudo apt install cassandra
+	sudo service cassandra start
+
+import_schema:
+	cqlsh -f $(TOP)/schema.cql
