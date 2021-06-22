@@ -87,4 +87,3 @@ class SensorDataReader:
 if __name__ == "__main__":
     sdr = SensorDataReader("config.ini")
     sdr.start()
-

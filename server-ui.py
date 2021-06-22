@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!PythonEnv/bin/python
 import dash, datetime, os, time
 import dash_core_components as dcc
 import dash_html_components as html
@@ -82,40 +82,13 @@ app.layout = html.Div(
                     width="10%",
                 ),
                 dbc.Col(
-                    children=[
-                        html.H1(
-                            "THIS IS DEVELOPMENT BRANCH IT CAN BE SWITCHED OFF ANYTIME",
-                            style={
-                                "text-align": "left",
-                                "font-family": "Trocchi",
-                                "color": "red",
-                                "width": "50%",
-                                "font-size": "20px",
-                            },
-                        ),
-                        html.Label(
-                            [
-                                "FOR STABLE VERSION\t",
-                                html.A("CLICK HERE", href="http://130.246.71.15:8050"),
-                            ],
-                            style={
-                                "text-align": "left",
-                                "font-family": "Trocchi",
-                                "color": "red",
-                                "width": "50%",
-                                "font-size": "20px",
-                            },
-                        ),
-                    ]
-                ),
-                dbc.Col(
                     children=html.H1(
                         id="plot-title",
                         style={
                             "font-family": "Trocchi",
                             "color": "#7c795d",
-                            "width": "60%",
-                            "margin-left": "-20%",
+                            "width": "90%",
+                            "text-align": "center",
                         },
                     )
                 ),
@@ -603,13 +576,15 @@ def update_max_date(n_invervals):
     [
         Output("date-picker", "date"),
         Output("date-picker-range", "max_date_allowed"),
-        Output("date-range-T-vs-CO2", "max_date_allowed")
+        Output("date-range-T-vs-CO2", "max_date_allowed"),
+	Output("date-picker-range", "start_date"),
+        Output("date-picker-range", "end_date")
     ],
     [Input("interval-component", "n_intervals")]
 )
 def update_current_date(n_intervals):
     if n_intervals == 0:
-        return datetime.date.today(),datetime.date.today(),datetime.date.today()
+        return datetime.date.today(),datetime.date.today(),datetime.date.today(),datetime.date.today(),datetime.date.today()
     else:
         return dash.no_update
 
@@ -1050,4 +1025,4 @@ def get_sensor_datafile_name(date):
 
 
 if __name__ == "__main__":
-    app.run_server(port=8051, debug=True, host="0.0.0.0")
+    app.run_server(port=8051, debug=False, host="0.0.0.0")

@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!PythonEnv/bin/python
 from sensor_data_reader import SensorDataReader
 from stats_writer import StatsWriter
 import threading, logging

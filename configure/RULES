@@ -1,0 +1,2 @@
+include $(TOP)/configure/RULES_DB
+include $(TOP)/configure/RULES_PKG
