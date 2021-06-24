@@ -1,4 +1,4 @@
-import os, datetime, time
+import os, datetime, time, logging
 from configparser import ConfigParser
 from pathlib import Path
 from sensor import Sensor
@@ -11,10 +11,13 @@ if(float(sys.version[:3])<3.7):
     from backports.datetime_fromisoformat import MonkeyPatch
     MonkeyPatch.patch_fromisoformat()
 
+logger = logging.getLogger(__name__)
 
 class SensorDataReader:
     def __init__(self, config_file="config.ini"):
+        logger.debug("SDR startup, config file = {0}".format(config_file))
         self._read_config_file(config_file)
+        logger.debug("Loaded config file")
         self._sensors = [Sensor(d) for d in self._sensors_details]
         self._db = SensorsDAO()
 
@@ -24,9 +27,13 @@ class SensorDataReader:
         self._sensors_details = [
             {"ip": i[0], "name": i[1]} for i in cp["sensors"].items()
         ]
+        logger.debug("Loaded {0} sensors".format(len(self._sensors_details)))
         self._sample_interval = cp.getint("settings", "sensor read interval")
+        logger.debug("Sample interval: {0}".format(self._sample_interval))
         self._data_file_location = cp.get("settings", "data file location")
+        logger.debug("Data file location: {0}".format(self._data_file_location))
         self._timeout_value = cp.getint("settings", "warning timeout")
+        logger.debug("Warning timeout: {0}".format(self._timeout_value))
 
     def _get_today(self):
         return datetime.date.today().strftime("%Y%m%d")
