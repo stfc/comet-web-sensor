@@ -14,10 +14,14 @@ if debug:
 else:
     logging.basicConfig(level=logging.WARNING)
 
+logger = logging.getLogger(__name__)
 
 if __name__ == "__main__":
+    logger.info("Starting up")
     sdr = SensorDataReader("config.ini")
+    logger.info("Loaded sensor config")
     sw = StatsWriter("config.ini", 60 * 60 * 2)
+    logger.info("Initialised data store")
     reader_thread = threading.Thread(target=sdr.start, name="reader_thread")
     stats_thread = threading.Thread(target=sw.start, name="stats_thread")
 
