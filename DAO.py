@@ -68,8 +68,8 @@ class SensorsDAO:
             "temperature": "select * from sensors.temperature",
             }
 
-        SensorsDAO.get_sensor_status_stmt = self.get_session().prepare("SELECT name, last_read, online FROM sensors_status")
-        SensorsDAO.insert_sensor_status_stmt = self.get_session().prepare("INSERT INTO sensors_status (ip, name, last_read, online) VALUES (?,?,?,?)")
+        SensorsDAO.get_sensor_status_stmt = self.get_session().prepare("SELECT name, last_read, online FROM sensors")
+        SensorsDAO.insert_sensor_status_stmt = self.get_session().prepare("INSERT INTO sensors (ip, name, last_read, online) VALUES (?,?,?,?)")
 
     def get_session(self):
         return self.session
