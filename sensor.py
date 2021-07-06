@@ -87,7 +87,11 @@ class Sensor:
                     if child.findall("unit")
                 }
                 time_string = xml.findtext("time")
-                data["Time"] = self._format_timestamp(time_string)
+                if not time_string or len(time_string.strip()) == 0: #Blank in the XML
+                    logging.warning("No timestamp received from sensor, recommend setting NTP. Using local time instead")
+                    data["Time"] = self._format_timestamp(dt.now())
+                else:
+                    data["Time"] = self._format_timestamp(time_string)
                 self._last_successful_read = dt.strptime(
                     data["Time"], "%m/%d/%Y %H:%M:%S"
                 )
